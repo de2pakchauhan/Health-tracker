@@ -1,196 +1,133 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/>
 <title>Health Log</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  :root{
-    --bg:#080810;--surface:#11111f;--card:#181828;--border:#1e1e35;--muted:#2a2a45;
-    --dim:#6b6b8a;--text:#e2e2f0;--white:#ffffff;
-    --indigo:#818cf8;--green:#34d399;--red:#f87171;--amber:#fbbf24;
-    --orange:#fb923c;--blue:#60a5fa;--purple:#a78bfa;--teal:#2dd4bf;
-  }
-  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:72px}
-  .header{background:linear-gradient(160deg,#1a1a3e,var(--bg));padding:20px 16px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
-  .header h1{font-size:20px;font-weight:800;color:var(--white)}
-  .header p{font-size:11px;color:var(--dim);margin-top:2px}
-  .dot-row{display:flex;align-items:center;gap:6px;margin-top:6px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);transition:background .3s}
-  .dot.ok{background:var(--green)}.dot.err{background:var(--red)}
-  .dot-label{font-size:10px;color:var(--dim)}
-  .sync-msg{font-size:11px;color:var(--teal);font-weight:600;margin-top:4px;min-height:16px}
-  .sync-msg.err{color:var(--red)}
-  .page{display:none;padding:14px 16px}.page.active{display:block}
-  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid var(--border)}
-  .row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
-  .row:last-child{border-bottom:none}
-  .lbl{font-size:13px;color:var(--dim)}.val{font-size:14px;font-weight:600}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .stat-card{background:var(--card);border-radius:14px;padding:14px 16px;border:1px solid var(--border)}
-  .stat-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-  .stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px}
-  .stat-sub{font-size:10px;color:var(--dim);margin-top:4px}
-  .chip{display:inline-flex;padding:6px 14px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:var(--surface);color:var(--dim);white-space:nowrap;transition:all .15s}
-  .chip.active{background:var(--indigo);border-color:var(--indigo);color:var(--white)}
-  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
-  .chips::-webkit-scrollbar{display:none}
-  .sub-page{display:none}.sub-page.active{display:block}
-  .btn{width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--white);margin-bottom:8px}
-  .btn-indigo{background:var(--indigo)}.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--dim)}
-  textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--white);font-size:12px;min-height:160px;resize:vertical;font-family:monospace;outline:none;line-height:1.6}
-  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top:3px solid var(--indigo);border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px;text-align:center;padding:24px}
-  .set-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border-radius:8px;padding:6px 10px;font-size:11px;margin:3px}
-  .badge{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-  .nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px 0 12px;z-index:100}
-  .nav-btn{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0}
-  .nav-bar{width:20px;height:3px;border-radius:2px;background:transparent;margin-bottom:2px;transition:background .15s}
-  .nav-btn.active .nav-bar{background:var(--indigo)}
-  .nav-label{font-size:10px;font-weight:600;color:var(--dim);transition:color .15s}
-  .nav-btn.active .nav-label{color:var(--indigo)}
-  .notice{background:#1a2a1a;border:1px solid var(--green);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--green);font-weight:600}
-  .notice.err{background:#2a1a1a;border-color:var(--red);color:var(--red)}
-  .code-block{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px}
-  .code-block .code-title{font-size:11px;font-weight:700;margin-bottom:8px}
-  .code-line{font-size:10px;color:var(--dim);font-family:monospace;line-height:1.9}
-  svg text{font-family:-apple-system,sans-serif}
-</style>
+<link href="css/style.css" rel="stylesheet"/>
 </head>
 <body>
-
 <div class="header">
-  <h1>Health Log</h1>
-  <p id="hdr-sub">Loading...</p>
-  <div class="dot-row">
-    <div class="dot" id="dot"></div>
-    <span class="dot-label" id="dot-label">Connecting</span>
-  </div>
-  <div class="sync-msg" id="sync-msg"></div>
+<h1>Health Log</h1>
+<p id="hdr-sub">Loading...</p>
+<div class="dot-row">
+<div class="dot" id="dot"></div>
+<span class="dot-label" id="dot-label">Connecting</span>
 </div>
-
+<div class="sync-msg" id="sync-msg"></div>
+</div>
 <!-- HOME -->
 <div class="page active" id="page-home">
-  <div class="chips" id="home-chips">
-    <button class="chip active" onclick="showSub('home','overview')">Overview</button>
-    <button class="chip" onclick="showSub('home','weekly')">Weekly</button>
-    <button class="chip" onclick="showSub('home','runs')">Runs</button>
-    <button class="chip" onclick="showSub('home','projection')">Projection</button>
-  </div>
-  <div class="sub-page active" id="sub-home-overview">
-    <div class="grid2" id="stat-cards" style="margin-bottom:12px"></div>
-    <div class="card" id="recovery-card"></div>
-    <div class="card" id="latest-card"></div>
-  </div>
-  <div class="sub-page" id="sub-home-weekly" id="weekly-list"></div>
-  <div class="sub-page" id="sub-home-runs"></div>
-  <div class="sub-page" id="sub-home-projection">
-    <div class="card">
-      <div class="lbl" style="margin-bottom:10px">Target weight</div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <button onclick="bumpTarget(-0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">-</button>
-        <div id="target-display" style="flex:1;text-align:center;font-size:30px;font-weight:800;color:var(--blue)">70.0 kg</div>
-        <button onclick="bumpTarget(0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">+</button>
-      </div>
-      <div id="still-to-lose" style="text-align:center;font-size:11px;color:var(--dim);margin-top:6px"></div>
-    </div>
-    <div id="proj-result"></div>
-  </div>
+<div class="chips" id="home-chips">
+<button class="chip active" onclick="showSub('home','overview')">Overview</button>
+<button class="chip" onclick="showSub('home','weekly')">Weekly</button>
+<button class="chip" onclick="showSub('home','runs')">Runs</button>
+<button class="chip" onclick="showSub('home','projection')">Projection</button>
 </div>
-
+<div class="sub-page active" id="sub-home-overview">
+<div class="grid2" id="stat-cards" style="margin-bottom:12px"></div>
+<div class="card" id="recovery-card"></div>
+<div class="card" id="latest-card"></div>
+</div>
+<div class="sub-page" id="weekly-list"></div>
+<div class="sub-page" id="sub-home-runs"></div>
+<div class="sub-page" id="sub-home-projection">
+<div class="card">
+<div class="lbl" style="margin-bottom:10px">Target weight</div>
+<div style="display:flex;align-items:center;gap:12px">
+<button onclick="bumpTarget(-0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">-</button>
+<div id="target-display" style="flex:1;text-align:center;font-size:30px;font-weight:800;color:var(--blue)">70.0 kg</div>
+<button onclick="bumpTarget(0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">+</button>
+</div>
+<div id="still-to-lose" style="text-align:center;font-size:11px;color:var(--dim);margin-top:6px"></div>
+</div>
+<div id="proj-result"></div>
+</div>
+</div>
 <!-- NUTRITION -->
 <div class="page" id="page-nutrition">
-  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Nutrition History</div>
-  <div style="font-size:12px;color:var(--dim);margin-bottom:14px" id="nutr-sub"></div>
-  <div class="grid2" style="margin-bottom:14px" id="nutr-avgs"></div>
-  <div id="nutr-list"></div>
+<div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Nutrition History</div>
+<div id="nutr-sub" style="font-size:12px;color:var(--dim);margin-bottom:14px"></div>
+<div class="grid2" id="nutr-avgs" style="margin-bottom:14px"></div>
+<div id="nutr-list"></div>
 </div>
-
 <!-- LIFT -->
 <div class="page" id="page-strength">
-  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Strength Tracker</div>
-  <div style="font-size:12px;color:var(--dim);margin-bottom:14px" id="str-sub"></div>
-  <div id="str-list"></div>
+<div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Strength Tracker</div>
+<div id="str-sub" style="font-size:12px;color:var(--dim);margin-bottom:14px"></div>
+<div id="str-list"></div>
 </div>
-
 <!-- CHARTS -->
 <div class="page" id="page-charts">
-  <div class="chips" id="chart-chips">
-    <button class="chip active" onclick="setChart('weight')">Weight</button>
-    <button class="chip" onclick="setChart('rhr')">RHR</button>
-    <button class="chip" onclick="setChart('steps')">Steps</button>
-    <button class="chip" onclick="setChart('move')">Move</button>
-    <button class="chip" onclick="setChart('burn')">Burn</button>
-    <button class="chip" onclick="setChart('hrv')">HRV</button>
-  </div>
-  <div class="grid3" style="margin-bottom:12px" id="chart-stats"></div>
-  <div class="card" id="chart-container"></div>
+<div class="chips" id="chart-chips">
+<button class="chip active" onclick="setChart('weight')">Weight</button>
+<button class="chip" onclick="setChart('rhr')">RHR</button>
+<button class="chip" onclick="setChart('steps')">Steps</button>
+<button class="chip" onclick="setChart('move')">Move</button>
+<button class="chip" onclick="setChart('burn')">Burn</button>
+<button class="chip" onclick="setChart('hrv')">HRV</button>
 </div>
-
+<div class="grid3" id="chart-stats" style="margin-bottom:12px"></div>
+<div class="card" id="chart-container"></div>
+</div>
 <!-- LOG -->
 <div class="page" id="page-history">
-  <div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--white)">Full Log</div>
-  <div id="log-list"></div>
+<div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--white)">Full Log</div>
+<div id="log-list"></div>
 </div>
-
 <!-- ADD -->
 <div class="page" id="page-add">
-  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
-  <div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON and tap Save</div>
-  <div id="add-msg"></div>
-  <div class="code-block">
-    <div class="code-title" style="color:var(--amber)">Fitness only</div>
-    <div class="code-line">{ "fitness": {</div>
-    <div class="code-line">&nbsp;&nbsp;"date": "2026-06-25",</div>
-    <div class="code-line">&nbsp;&nbsp;"weight": null,  "rhr": 49,  "sleep": 6.5,</div>
-    <div class="code-line">&nbsp;&nbsp;"calMin": 1200,  "calMax": 1600,</div>
-    <div class="code-line">&nbsp;&nbsp;"protMin": 55,   "protMax": 70,</div>
-    <div class="code-line">&nbsp;&nbsp;"move": 650,  "totalBurn": 2500,</div>
-    <div class="code-line">&nbsp;&nbsp;"cardio": 45,  "steps": 8500,</div>
-    <div class="code-line">&nbsp;&nbsp;"distance": 6.8,  "hrv": 52</div>
-    <div class="code-line">}, "strength": null }</div>
-  </div>
-  <div class="code-block">
-    <div class="code-title" style="color:var(--purple)">With strength</div>
-    <div class="code-line">{ "fitness": { ... },</div>
-    <div class="code-line">&nbsp;&nbsp;"strength": {</div>
-    <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"workout": "Push A",</div>
-    <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"floorPress": "10,10,10 @ 8kg",</div>
-    <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"plank": "30s,30s"</div>
-    <div class="code-line">&nbsp;&nbsp;}</div>
-    <div class="code-line">}</div>
-  </div>
-  <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
-  <button class="btn btn-indigo" onclick="parseAndSave()">Parse and Save</button>
-  <button class="btn btn-ghost" onclick="document.getElementById('json-input').value='';showAddMsg(null)">Clear</button>
+<div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
+<div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON and tap Save</div>
+<div id="add-msg"></div>
+<div class="code-block">
+<div class="code-title" style="color:var(--amber)">Fitness only</div>
+<div class="code-line">{ "fitness": {</div>
+<div class="code-line">  "date": "2026-06-25",</div>
+<div class="code-line">  "weight": null,  "rhr": 49,  "sleep": 6.5,</div>
+<div class="code-line">  "calMin": 1200,  "calMax": 1600,</div>
+<div class="code-line">  "protMin": 55,   "protMax": 70,</div>
+<div class="code-line">  "move": 650,  "totalBurn": 2500,</div>
+<div class="code-line">  "cardio": 45,  "steps": 8500,</div>
+<div class="code-line">  "distance": 6.8,  "hrv": 52</div>
+<div class="code-line">}, "strength": null }</div>
 </div>
-
+<div class="code-block">
+<div class="code-title" style="color:var(--purple)">With strength</div>
+<div class="code-line">{ "fitness": { ... },</div>
+<div class="code-line">  "strength": {</div>
+<div class="code-line">    "workout": "Push A",</div>
+<div class="code-line">    "floorPress": "10,10,10 @ 8kg",</div>
+<div class="code-line">    "plank": "30s,30s"</div>
+<div class="code-line">  }</div>
+<div class="code-line">}</div>
+</div>
+<textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
+<button class="btn btn-indigo" onclick="parseAndSave()">Parse and Save</button>
+<button class="btn btn-ghost" onclick="document.getElementById('json-input').value='';showAddMsg(null)">Clear</button>
+</div>
 <!-- NAV -->
 <nav class="nav">
-  <button class="nav-btn active" onclick="showTab('home',this)">
-    <div class="nav-bar"></div><span class="nav-label">Home</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('nutrition',this)">
-    <div class="nav-bar"></div><span class="nav-label">Nutrition</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('strength',this)">
-    <div class="nav-bar"></div><span class="nav-label">Lift</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('charts',this)">
-    <div class="nav-bar"></div><span class="nav-label">Charts</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('history',this)">
-    <div class="nav-bar"></div><span class="nav-label">Log</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('add',this)">
-    <div class="nav-bar"></div><span class="nav-label">Add</span>
-  </button>
+<button class="nav-btn active" onclick="showTab('home',this)">
+<div class="nav-bar"></div><span class="nav-label">Home</span>
+</button>
+<button class="nav-btn" onclick="showTab('nutrition',this)">
+<div class="nav-bar"></div><span class="nav-label">Nutrition</span>
+</button>
+<button class="nav-btn" onclick="showTab('strength',this)">
+<div class="nav-bar"></div><span class="nav-label">Lift</span>
+</button>
+<button class="nav-btn" onclick="showTab('charts',this)">
+<div class="nav-bar"></div><span class="nav-label">Charts</span>
+</button>
+<button class="nav-btn" onclick="showTab('history',this)">
+<div class="nav-bar"></div><span class="nav-label">Log</span>
+</button>
+<button class="nav-btn" onclick="showTab('add',this)">
+<div class="nav-bar"></div><span class="nav-label">Add</span>
+</button>
 </nav>
-
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxunxRA-KKBYblKoCH02drul3Lrw0ngmq5uY-w2HXotwdBfqKs1TDJhc5rD7NiwhKX86Q/exec";
 const TARGET_KEY = "health-target-v1";
