@@ -1,771 +1,133 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/>
 <title>Health Log</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  :root{
-    --bg:#080810;--surface:#11111f;--card:#181828;--border:#1e1e35;--muted:#2a2a45;
-    --dim:#6b6b8a;--text:#e2e2f0;--white:#ffffff;
-    --indigo:#818cf8;--green:#34d399;--red:#f87171;--amber:#fbbf24;
-    --orange:#fb923c;--blue:#60a5fa;--purple:#a78bfa;--teal:#2dd4bf;
-  }
-  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:72px}
-  .header{background:linear-gradient(160deg,#1a1a3e,var(--bg));padding:20px 16px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
-  .header h1{font-size:20px;font-weight:800;color:var(--white)}
-  .header p{font-size:11px;color:var(--dim);margin-top:2px}
-  .dot-row{display:flex;align-items:center;gap:6px;margin-top:6px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);transition:background .3s}
-  .dot.ok{background:var(--green)}.dot.err{background:var(--red)}
-  .dot-label{font-size:10px;color:var(--dim)}
-  .sync-msg{font-size:11px;color:var(--teal);font-weight:600;margin-top:4px;min-height:16px}
-  .sync-msg.err{color:var(--red)}
-  .page{display:none;padding:14px 16px}.page.active{display:block}
-  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid var(--border)}
-  .row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
-  .row:last-child{border-bottom:none}
-  .lbl{font-size:13px;color:var(--dim)}.val{font-size:14px;font-weight:600}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .stat-card{background:var(--card);border-radius:14px;padding:14px 16px;border:1px solid var(--border)}
-  .stat-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-  .stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px}
-  .stat-sub{font-size:10px;color:var(--dim);margin-top:4px}
-  .chip{display:inline-flex;padding:6px 14px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:var(--surface);color:var(--dim);white-space:nowrap;transition:all .15s}
-  .chip.active{background:var(--indigo);border-color:var(--indigo);color:var(--white)}
-  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
-  .chips::-webkit-scrollbar{display:none}
-  .sub-page{display:none}.sub-page.active{display:block}
-  .btn{width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--white);margin-bottom:8px}
-  .btn-indigo{background:var(--indigo)}.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--dim)}
-  textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--white);font-size:12px;min-height:160px;resize:vertical;font-family:monospace;outline:none;line-height:1.6}
-  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top:3px solid var(--indigo);border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px;text-align:center;padding:24px}
-  .set-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border-radius:8px;padding:6px 10px;font-size:11px;margin:3px}
-  .badge{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-  .nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px 0 12px;z-index:100}
-  .nav-btn{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0}
-  .nav-bar{width:20px;height:3px;border-radius:2px;background:transparent;margin-bottom:2px;transition:background .15s}
-  .nav-btn.active .nav-bar{background:var(--indigo)}
-  .nav-label{font-size:10px;font-weight:600;color:var(--dim);transition:color .15s}
-  .nav-btn.active .nav-label{color:var(--indigo)}
-  .notice{background:#1a2a1a;border:1px solid var(--green);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--green);font-weight:600}
-  .notice.err{background:#2a1a1a;border-color:var(--red);color:var(--red)}
-  .code-block{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px}
-  .code-block .code-title{font-size:11px;font-weight:700;margin-bottom:8px}
-  .code-line{font-size:10px;color:var(--dim);font-family:monospace;line-height:1.9}
-  svg text{font-family:-apple-system,sans-serif}
-</style>
+<link href="css/style.css" rel="stylesheet"/>
 </head>
 <body>
-
 <div class="header">
-  <h1>Health Log</h1>
-  <p id="hdr-sub">Loading...</p>
-  <div class="dot-row">
-    <div class="dot" id="dot"></div>
-    <span class="dot-label" id="dot-label">Connecting</span>
-  </div>
-  <div class="sync-msg" id="sync-msg"></div>
+<h1>Health Log</h1>
+<p id="hdr-sub">Loading...</p>
+<div class="dot-row">
+<div class="dot" id="dot"></div>
+<span class="dot-label" id="dot-label">Connecting</span>
 </div>
-
+<div class="sync-msg" id="sync-msg"></div>
+</div>
 <!-- HOME -->
 <div class="page active" id="page-home">
-  <div class="chips" id="home-chips">
-    <button class="chip active" onclick="showSub('home','overview')">Overview</button>
-    <button class="chip" onclick="showSub('home','weekly')">Weekly</button>
-    <button class="chip" onclick="showSub('home','runs')">Runs</button>
-    <button class="chip" onclick="showSub('home','projection')">Projection</button>
-  </div>
-  <div class="sub-page active" id="sub-home-overview">
-    <div class="grid2" id="stat-cards" style="margin-bottom:12px"></div>
-    <div class="card" id="recovery-card"></div>
-    <div class="card" id="latest-card"></div>
-  </div>
-  <div class="sub-page" id="sub-home-weekly" id="weekly-list"></div>
-  <div class="sub-page" id="sub-home-runs"></div>
-  <div class="sub-page" id="sub-home-projection">
-    <div class="card">
-      <div class="lbl" style="margin-bottom:10px">Target weight</div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <button onclick="bumpTarget(-0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">-</button>
-        <div id="target-display" style="flex:1;text-align:center;font-size:30px;font-weight:800;color:var(--blue)">70.0 kg</div>
-        <button onclick="bumpTarget(0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">+</button>
-      </div>
-      <div id="still-to-lose" style="text-align:center;font-size:11px;color:var(--dim);margin-top:6px"></div>
-    </div>
-    <div id="proj-result"></div>
-  </div>
+<div class="chips" id="home-chips">
+<button class="chip active" onclick="showSub('home','overview')">Overview</button>
+<button class="chip" onclick="showSub('home','weekly')">Weekly</button>
+<button class="chip" onclick="showSub('home','runs')">Runs</button>
+<button class="chip" onclick="showSub('home','projection')">Projection</button>
 </div>
-
+<div class="sub-page active" id="sub-home-overview">
+<div class="grid2" id="stat-cards" style="margin-bottom:12px"></div>
+<div class="card" id="recovery-card"></div>
+<div class="card" id="latest-card"></div>
+</div>
+<div class="sub-page" id="sub-home-weekly"></div>
+<div class="sub-page" id="sub-home-runs"></div>
+<div class="sub-page" id="sub-home-projection">
+<div class="card">
+<div class="lbl" style="margin-bottom:10px">Target weight</div>
+<div style="display:flex;align-items:center;gap:12px">
+<button onclick="bumpTarget(-0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">-</button>
+<div id="target-display" style="flex:1;text-align:center;font-size:30px;font-weight:800;color:var(--blue)">70.0 kg</div>
+<button onclick="bumpTarget(0.1)" style="background:var(--surface);border:1px solid var(--border);color:var(--white);border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">+</button>
+</div>
+<div id="still-to-lose" style="text-align:center;font-size:11px;color:var(--dim);margin-top:6px"></div>
+</div>
+<div id="proj-result"></div>
+</div>
+</div>
 <!-- NUTRITION -->
 <div class="page" id="page-nutrition">
-  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Nutrition History</div>
-  <div style="font-size:12px;color:var(--dim);margin-bottom:14px" id="nutr-sub"></div>
-  <div class="grid2" style="margin-bottom:14px" id="nutr-avgs"></div>
-  <div id="nutr-list"></div>
+<div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Nutrition History</div>
+<div id="nutr-sub" style="font-size:12px;color:var(--dim);margin-bottom:14px"></div>
+<div class="grid2" id="nutr-avgs" style="margin-bottom:14px"></div>
+<div id="nutr-list"></div>
 </div>
-
 <!-- LIFT -->
 <div class="page" id="page-strength">
-  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Strength Tracker</div>
-  <div style="font-size:12px;color:var(--dim);margin-bottom:14px" id="str-sub"></div>
-  <div id="str-list"></div>
+<div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Strength Tracker</div>
+<div id="str-sub" style="font-size:12px;color:var(--dim);margin-bottom:14px"></div>
+<div id="str-list"></div>
 </div>
-
 <!-- CHARTS -->
 <div class="page" id="page-charts">
-  <div class="chips" id="chart-chips">
-    <button class="chip active" onclick="setChart('weight')">Weight</button>
-    <button class="chip" onclick="setChart('rhr')">RHR</button>
-    <button class="chip" onclick="setChart('steps')">Steps</button>
-    <button class="chip" onclick="setChart('move')">Move</button>
-    <button class="chip" onclick="setChart('burn')">Burn</button>
-    <button class="chip" onclick="setChart('hrv')">HRV</button>
-  </div>
-  <div class="grid3" style="margin-bottom:12px" id="chart-stats"></div>
-  <div class="card" id="chart-container"></div>
+<div class="chips" id="chart-chips">
+<button class="chip active" onclick="setChart('weight')">Weight</button>
+<button class="chip" onclick="setChart('rhr')">RHR</button>
+<button class="chip" onclick="setChart('steps')">Steps</button>
+<button class="chip" onclick="setChart('move')">Move</button>
+<button class="chip" onclick="setChart('burn')">Burn</button>
+<button class="chip" onclick="setChart('hrv')">HRV</button>
 </div>
-
+<div class="grid3" id="chart-stats" style="margin-bottom:12px"></div>
+<div class="card" id="chart-container"></div>
+</div>
 <!-- LOG -->
 <div class="page" id="page-history">
-  <div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--white)">Full Log</div>
-  <div id="log-list"></div>
+<div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--white)">Full Log</div>
+<div id="log-list"></div>
 </div>
-
 <!-- ADD -->
 <div class="page" id="page-add">
-  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
-  <div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON and tap Save</div>
-  <div id="add-msg"></div>
-  <div class="code-block">
-    <div class="code-title" style="color:var(--amber)">Fitness only</div>
-    <div class="code-line">{ "fitness": {</div>
-    <div class="code-line">&nbsp;&nbsp;"date": "2026-06-25",</div>
-    <div class="code-line">&nbsp;&nbsp;"weight": null,  "rhr": 49,  "sleep": 6.5,</div>
-    <div class="code-line">&nbsp;&nbsp;"calMin": 1200,  "calMax": 1600,</div>
-    <div class="code-line">&nbsp;&nbsp;"protMin": 55,   "protMax": 70,</div>
-    <div class="code-line">&nbsp;&nbsp;"move": 650,  "totalBurn": 2500,</div>
-    <div class="code-line">&nbsp;&nbsp;"cardio": 45,  "steps": 8500,</div>
-    <div class="code-line">&nbsp;&nbsp;"distance": 6.8,  "hrv": 52</div>
-    <div class="code-line">}, "strength": null }</div>
-  </div>
-  <div class="code-block">
-    <div class="code-title" style="color:var(--purple)">With strength</div>
-    <div class="code-line">{ "fitness": { ... },</div>
-    <div class="code-line">&nbsp;&nbsp;"strength": {</div>
-    <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"workout": "Push A",</div>
-    <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"floorPress": "10,10,10 @ 8kg",</div>
-    <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"plank": "30s,30s"</div>
-    <div class="code-line">&nbsp;&nbsp;}</div>
-    <div class="code-line">}</div>
-  </div>
-  <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
-  <button class="btn btn-indigo" onclick="parseAndSave()">Parse and Save</button>
-  <button class="btn btn-ghost" onclick="document.getElementById('json-input').value='';showAddMsg(null)">Clear</button>
+<div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
+<div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON and tap Save</div>
+<div id="add-msg"></div>
+<div class="code-block">
+<div class="code-title" style="color:var(--amber)">Fitness only</div>
+<div class="code-line">{ "fitness": {</div>
+<div class="code-line">  "date": "2026-06-25",</div>
+<div class="code-line">  "weight": null,  "rhr": 49,  "sleep": 6.5,</div>
+<div class="code-line">  "calMin": 1200,  "calMax": 1600,</div>
+<div class="code-line">  "protMin": 55,   "protMax": 70,</div>
+<div class="code-line">  "move": 650,  "totalBurn": 2500,</div>
+<div class="code-line">  "cardio": 45,  "steps": 8500,</div>
+<div class="code-line">  "distance": 6.8,  "hrv": 52</div>
+<div class="code-line">}, "strength": null }</div>
 </div>
-
+<div class="code-block">
+<div class="code-title" style="color:var(--purple)">With strength</div>
+<div class="code-line">{ "fitness": { ... },</div>
+<div class="code-line">  "strength": {</div>
+<div class="code-line">    "workout": "Push A",</div>
+<div class="code-line">    "floorPress": "10,10,10 @ 8kg",</div>
+<div class="code-line">    "plank": "30s,30s"</div>
+<div class="code-line">  }</div>
+<div class="code-line">}</div>
+</div>
+<textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
+<button class="btn btn-indigo" onclick="parseAndSave()">Parse and Save</button>
+<button class="btn btn-ghost" onclick="document.getElementById('json-input').value='';showAddMsg(null)">Clear</button>
+</div>
 <!-- NAV -->
 <nav class="nav">
-  <button class="nav-btn active" onclick="showTab('home',this)">
-    <div class="nav-bar"></div><span class="nav-label">Home</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('nutrition',this)">
-    <div class="nav-bar"></div><span class="nav-label">Nutrition</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('strength',this)">
-    <div class="nav-bar"></div><span class="nav-label">Lift</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('charts',this)">
-    <div class="nav-bar"></div><span class="nav-label">Charts</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('history',this)">
-    <div class="nav-bar"></div><span class="nav-label">Log</span>
-  </button>
-  <button class="nav-btn" onclick="showTab('add',this)">
-    <div class="nav-bar"></div><span class="nav-label">Add</span>
-  </button>
+<button class="nav-btn active" onclick="showTab('home',this)">
+<div class="nav-bar"></div><span class="nav-label">Home</span>
+</button>
+<button class="nav-btn" onclick="showTab('nutrition',this)">
+<div class="nav-bar"></div><span class="nav-label">Nutrition</span>
+</button>
+<button class="nav-btn" onclick="showTab('strength',this)">
+<div class="nav-bar"></div><span class="nav-label">Lift</span>
+</button>
+<button class="nav-btn" onclick="showTab('charts',this)">
+<div class="nav-bar"></div><span class="nav-label">Charts</span>
+</button>
+<button class="nav-btn" onclick="showTab('history',this)">
+<div class="nav-bar"></div><span class="nav-label">Log</span>
+</button>
+<button class="nav-btn" onclick="showTab('add',this)">
+<div class="nav-bar"></div><span class="nav-label">Add</span>
+</button>
 </nav>
-
-<script>
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxunxRA-KKBYblKoCH02drul3Lrw0ngmq5uY-w2HXotwdBfqKs1TDJhc5rD7NiwhKX86Q/exec";
-const TARGET_KEY = "health-target-v1";
-const C = {
-  bg:"#080810",surface:"#11111f",card:"#181828",border:"#1e1e35",muted:"#2a2a45",
-  dim:"#6b6b8a",text:"#e2e2f0",white:"#ffffff",indigo:"#818cf8",green:"#34d399",
-  red:"#f87171",amber:"#fbbf24",orange:"#fb923c",blue:"#60a5fa",purple:"#a78bfa",teal:"#2dd4bf"
-};
-const EXMAP = {
-  floorPress:"Floor Press",shoulderPress:"Shoulder Press",lateralRaise:"Lateral Raise",
-  ohTricepsExt:"OH Triceps Ext",plank:"Plank",dbRow:"DB Row",rdl:"RDL",
-  hammerCurl:"Hammer Curl",dbCurl:"DB Curl",reverseFly:"Reverse Fly",deadBug:"Dead Bug",
-  inclinePress:"Incline Press",latPulldown:"Lat Pulldown",seatedRow:"Seated Row",
-  facePull:"Face Pull",bicepCurl:"Bicep Curl",legPress:"Leg Press",legCurl:"Leg Curl",
-  calfRaise:"Calf Raise",gobletSquat:"Goblet Squat"
-};
-
-let fitData = [], strData = [], target = 70, currentChart = "weight";
-
-// ── HELPERS ──
-function sleepH(s) {
-  if (!s) return null;
-  const clean = String(s).replace("~","").trim();
-  const parts = clean.split(":");
-  if (parts.length >= 2) return parseInt(parts[0]) + parseInt(parts[1]) / 60;
-  return parseFloat(clean) || null;
-}
-
-function recScore(e) {
-  if (!e) return null;
-  let sc = 100;
-  const sl = sleepH(e.sleep);
-  if (sl !== null) { if (sl < 5) sc -= 30; else if (sl < 6) sc -= 15; else if (sl >= 7) sc += 5; }
-  if (e.rhr) { if (e.rhr > 55) sc -= 20; else if (e.rhr > 50) sc -= 10; else if (e.rhr < 45) sc += 5; }
-  if (e.hrv) { if (e.hrv < 40) sc -= 15; else if (e.hrv > 70) sc += 10; }
-  return Math.max(0, Math.min(100, sc));
-}
-
-function isoToDate(s) {
-  if (!s) return null;
-  const str = String(s);
-  if (/^\d{2}-[A-Za-z]{3}/.test(str)) return str;
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-    const d = new Date(str);
-    const day = String(d.getUTCDate()).padStart(2,"0");
-    const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
-    return day + "-" + mon;
-  }
-  return str;
-}
-
-function parseRow(r) {
-  function parseSleep(v) {
-    if (!v) return null;
-    const s = String(v);
-    if (/^~?\d+:\d+$/.test(s.trim())) return s.trim();
-    if (s.includes("T")) {
-      try {
-        const d = new Date(s);
-        return d.getUTCHours() + ":" + String(d.getUTCMinutes()).padStart(2,"0");
-      } catch(_) {}
-    }
-    return s;
-  }
-  const date = isoToDate(r.date) || String(r.date);
-  return {
-    date,
-    weight:  r.weight   ? parseFloat(r.weight)   : null,
-    rhr:     r.rhr      ? parseInt(r.rhr)         : null,
-    sleep:   parseSleep(r.sleep),
-    calMin:  r.calmin   ? parseInt(r.calmin)      : null,
-    calMax:  r.calmax   ? parseInt(r.calmax)      : null,
-    protMin: r.protmin  ? parseInt(r.protmin)     : null,
-    protMax: r.protmax  ? parseInt(r.protmax)     : null,
-    move:    r.move     ? parseInt(r.move)        : null,
-    burn:    r.totalburn? parseInt(r.totalburn)   : null,
-    cardio:  r.cardio   ? String(r.cardio)        : null,
-    steps:   r.steps    ? parseInt(r.steps)       : null,
-    dist:    r.distance ? parseFloat(r.distance)  : null,
-    hrv:     r.hrv      ? parseInt(r.hrv)         : null,
-    notes:   r.notes    ? String(r.notes)         : null,
-    run5k:   r["5k"]    ? String(r["5k"])         : null,
-    run10k:  r["10k"]   ? String(r["10k"])        : null,
-  };
-}
-
-function parseStrRows(rows) {
-  const sessions = {};
-  rows.forEach(r => {
-    const date = isoToDate(r.date) || String(r.date || "");
-    const workout = String(r.workout || "");
-    const key = date + "|" + workout;
-    if (!sessions[key]) sessions[key] = { date, workout, exercises: {} };
-    const exName = String(r.exercise || "");
-    if (!sessions[key].exercises[exName]) sessions[key].exercises[exName] = [];
-    sessions[key].exercises[exName].push({
-      reps: r.reps ? String(r.reps) : "",
-      wt: r.weight && String(r.weight) !== "BW" ? String(r.weight) : null,
-    });
-  });
-  return Object.values(sessions).map(s => ({
-    date: s.date, workout: s.workout,
-    exercises: Object.entries(s.exercises).map(([name, sets]) => ({ name, sets })),
-  }));
-}
-
-// ── FETCH FROM SHEETS ──
-function setDot(state) {
-  const dot = document.getElementById("dot");
-  const lbl = document.getElementById("dot-label");
-  dot.className = "dot" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
-  lbl.textContent = state === "ok" ? "Sheets OK" : state === "err" ? "Sheets Error" : "Connecting";
-}
-
-function setSyncMsg(msg, isErr) {
-  const el = document.getElementById("sync-msg");
-  el.textContent = msg || "";
-  el.className = "sync-msg" + (isErr ? " err" : "");
-}
-
-async function loadFromSheets() {
-  setSyncMsg("Loading from Google Sheets...");
-  try {
-    const [fr, sr] = await Promise.all([
-      fetch(SHEET_URL + "?sheet=fitness").then(r => r.json()),
-      fetch(SHEET_URL + "?sheet=strength").then(r => r.json()),
-    ]);
-    if (fr.status === "ok" && fr.data && fr.data.length > 0) {
-      fitData = fr.data.map(parseRow).filter(r => r.date);
-      setDot("ok");
-      setSyncMsg("Live from Google Sheets");
-      setTimeout(() => setSyncMsg(""), 3000);
-    } else {
-      setDot("err");
-      setSyncMsg("No data in Fitness sheet", true);
-    }
-    if (sr.status === "ok" && sr.data && sr.data.length > 0) {
-      strData = parseStrRows(sr.data);
-    }
-    renderAll();
-  } catch(e) {
-    setDot("err");
-    setSyncMsg("Cannot reach Sheets: " + e.message, true);
-    document.getElementById("hdr-sub").textContent = "Sheets unreachable";
-  }
-}
-
-async function appendToSheet(sheet, row) {
-  try {
-    await fetch(SHEET_URL, {
-      method: "POST", mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ sheet, action: "append", row }),
-    });
-  } catch(_) {}
-}
-
-// ── RENDER ──
-function renderAll() {
-  if (!fitData.length) return;
-  const first = fitData[0];
-  const latest = fitData[fitData.length - 1];
-  const lastW = [...fitData].reverse().find(d => d.weight != null);
-  document.getElementById("hdr-sub").textContent = fitData.length + " days | " + first.date + " to " + latest.date;
-  renderOverview(first, latest, lastW);
-  renderWeekly();
-  renderRuns();
-  renderProjection(lastW);
-  renderNutrition();
-  renderStrength();
-  renderChart(currentChart);
-  renderLog();
-}
-
-function renderOverview(first, latest, lastW) {
-  const lkw = lastW ? lastW.weight : null;
-  const lkd = lastW ? lastW.date : null;
-  const daysAgo = lastW ? fitData.length - 1 - fitData.indexOf(lastW) : 0;
-  const lost = lkw && first.weight ? (first.weight - lkw).toFixed(2) : "0";
-  const rhrD = latest.rhr - first.rhr;
-  const avg7 = Math.round(fitData.slice(-7).reduce((s,d) => s+(d.steps||0),0) / 7);
-  const sc = recScore(latest);
-  const col = sc >= 75 ? C.green : sc >= 50 ? C.amber : C.red;
-  const slabel = sc >= 75 ? "Ready" : sc >= 50 ? "Moderate" : "Rest";
-
-  document.getElementById("stat-cards").innerHTML = [
-    { label:"Weight Lost", v:"-"+lost+" kg", sub:first.weight+" to "+lkw, col:C.green },
-    { label:"Last Weighed", v:(lkw||"--")+" kg", sub:(lkd||"--")+(daysAgo>0?" ("+daysAgo+"d ago)":""), col:C.blue },
-    { label:"Resting HR", v:(latest.rhr||"--")+" bpm", sub:(rhrD<0?"down ":"up ")+Math.abs(rhrD)+" from start", col:C.red },
-    { label:"7d Avg Steps", v:avg7.toLocaleString(), sub:"last 7 days", col:C.orange },
-  ].map(({label,v,sub,col}) => `
-    <div class="stat-card">
-      <div class="stat-label">${label}</div>
-      <div class="stat-val" style="color:${col}">${v}</div>
-      <div class="stat-sub">${sub}</div>
-    </div>
-  `).join("");
-
-  const r=28,cx=36,cy=36,sw=6,circ=2*Math.PI*r,dash=(sc/100)*circ;
-  document.getElementById("recovery-card").innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="display:flex;align-items:center;gap:10px">
-        <svg width="72" height="72">
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${C.muted}" stroke-width="${sw}"/>
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}"
-            stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${circ/4}" stroke-linecap="round"/>
-          <text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="13" font-weight="700" fill="${col}">${sc}</text>
-        </svg>
-        <div>
-          <div style="font-size:16px;font-weight:700;color:${col}">${slabel}</div>
-          <div style="font-size:11px;color:${C.dim}">Recovery</div>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:11px;color:${C.dim};margin-bottom:6px">${latest.date}</div>
-        ${[["Sleep",latest.sleep||"--"],["RHR",(latest.rhr||"--")+" bpm"],["HRV",latest.hrv?latest.hrv+" ms":"--"]].map(([l,v])=>`
-          <div style="display:flex;justify-content:flex-end;gap:12px;padding:3px 0">
-            <span style="font-size:13px;color:${C.dim}">${l}</span>
-            <span style="font-size:14px;font-weight:600">${v}</span>
-          </div>`).join("")}
-      </div>
-    </div>`;
-
-  document.getElementById("latest-card").innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:${C.teal};margin-bottom:10px">Latest ${latest.date}</div>
-    <div class="grid2" style="margin-bottom:10px">
-      <div style="background:${C.surface};border-radius:10px;padding:10px 12px">
-        <div style="font-size:10px;color:${C.dim};margin-bottom:2px">CALORIES</div>
-        <div style="font-size:18px;font-weight:800;color:${C.amber}">${latest.calMin&&latest.calMax?latest.calMin+"-"+latest.calMax:"--"}</div>
-        <div style="font-size:10px;color:${C.dim}">kcal</div>
-      </div>
-      <div style="background:${C.surface};border-radius:10px;padding:10px 12px">
-        <div style="font-size:10px;color:${C.dim};margin-bottom:2px">PROTEIN</div>
-        <div style="font-size:18px;font-weight:800;color:${C.green}">${latest.protMin&&latest.protMax?latest.protMin+"-"+latest.protMax+"g":"--"}</div>
-        <div style="font-size:10px;color:${C.dim}">grams</div>
-      </div>
-    </div>
-    ${[["Cardio",latest.cardio||"--"],["Steps",latest.steps?latest.steps.toLocaleString():"--"],["Distance",latest.dist?latest.dist+" km":"--"],["Move",latest.move?latest.move+" kcal":"--"],["Total Burn",latest.burn?latest.burn+" kcal":"--"]].map(([l,v])=>`
-      <div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("")}`;
-}
-
-function renderWeekly() {
-  const weeks = [];
-  for (let i = 0; i < fitData.length; i += 7) {
-    const c = fitData.slice(i, i+7);
-    if (c.length < 3) continue;
-    const wt = c.filter(d=>d.weight), sl = c.map(d=>sleepH(d.sleep)).filter(Boolean), pr = c.filter(d=>d.protMin&&d.protMax);
-    weeks.push({
-      label: c[0].date+" to "+c[c.length-1].date,
-      avgWt: wt.length?(wt.reduce((s,d)=>s+d.weight,0)/wt.length).toFixed(2):null,
-      avgRhr: c.filter(d=>d.rhr).length?Math.round(c.filter(d=>d.rhr).reduce((s,d)=>s+d.rhr,0)/c.filter(d=>d.rhr).length):null,
-      totSteps: c.reduce((s,d)=>s+(d.steps||0),0),
-      avgSl: sl.length?(sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(1):null,
-      avgProt: pr.length?Math.round(pr.reduce((s,d)=>s+(d.protMin+d.protMax)/2,0)/pr.length):null,
-      count: c.length,
-    });
-  }
-  document.getElementById("sub-home-weekly").innerHTML = weeks.reverse().map(w => `
-    <div class="card">
-      <div style="font-size:12px;font-weight:700;color:${C.indigo};margin-bottom:8px">${w.label}</div>
-      <div class="grid3">
-        ${[["Avg Wt",w.avgWt?w.avgWt+"kg":"--",C.blue],["Avg RHR",w.avgRhr?String(w.avgRhr):"--",C.red],["Avg Sleep",w.avgSl?w.avgSl+"h":"--",C.purple],["Steps",w.totSteps.toLocaleString(),C.green],["Avg Prot",w.avgProt?w.avgProt+"g":"--",C.amber],["Days",w.count+"/7",C.dim]].map(([l,v,c])=>`
-          <div><div style="font-size:10px;color:${C.dim}">${l}</div><div style="font-size:14px;font-weight:700;color:${c}">${v}</div></div>`).join("")}
-      </div>
-    </div>`).join("");
-}
-
-function renderRuns() {
-  const fiveKs = fitData.filter(d=>d.run5k).map(d => {
-    const m = String(d.run5k).match(/(\d+):(\d+)/);
-    if (!m) return null;
-    const secs = parseInt(m[1])*60+parseInt(m[2]);
-    return { date:d.date, secs, label:String(parseInt(m[1])).padStart(2,"0")+":"+String(parseInt(m[2])).padStart(2,"0") };
-  }).filter(Boolean);
-  const best = fiveKs.length ? fiveKs.reduce((b,c)=>c.secs<b.secs?c:b) : null;
-  const allRuns = fitData.filter(d=>d.cardio&&d.steps>2000);
-
-  document.getElementById("sub-home-runs").innerHTML = `
-    <div class="card" style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:700;color:${C.purple};margin-bottom:10px">5K Races</div>
-      ${fiveKs.length===0?`<div style="font-size:13px;color:${C.dim}">No 5K times logged yet</div>`:""}
-      ${fiveKs.map((r,i)=>{
-        const prev=fiveKs[i-1],diff=prev?prev.secs-r.secs:null;
-        return `<div class="row">
-          <span class="lbl">${r.date}</span>
-          <span style="display:flex;align-items:center;gap:8px">
-            <span class="val" style="color:${r===best?C.amber:C.text}">${r.label}${r===best?" PB":""}</span>
-            ${diff!==null?`<span style="font-size:11px;font-weight:700;color:${diff>0?C.green:C.red}">${diff>0?"-"+diff+"s":"+"+Math.abs(diff)+"s"}</span>`:""}
-          </span></div>`;
-      }).join("")}
-      ${fiveKs.length>1?`<div style="margin-top:8px;background:${C.surface};border-radius:8px;padding:8px 12px;font-size:12px;color:${C.dim}">Total off first: <span style="color:${C.green};font-weight:700">${fiveKs[0].secs-best.secs}s</span></div>`:""}
-    </div>
-    <div class="card">
-      <div style="font-size:13px;font-weight:700;color:${C.blue};margin-bottom:10px">All Cardio Sessions</div>
-      ${allRuns.map(r=>`<div class="row">
-        <span class="lbl">${r.date}</span>
-        <span style="display:flex;align-items:center;gap:8px">
-          <span class="val">${r.cardio}</span>
-          <span style="font-size:11px;color:${C.dim}">${r.steps?r.steps.toLocaleString():""} steps</span>
-        </span></div>`).join("")}
-    </div>`;
-}
-
-function renderProjection(lastW) {
-  const lkw = lastW ? lastW.weight : null;
-  const lkd = lastW ? lastW.date : null;
-  document.getElementById("target-display").textContent = target.toFixed(1) + " kg";
-  document.getElementById("still-to-lose").textContent = "Still to lose: " + Math.max(0,(lkw||0)-target).toFixed(1) + " kg";
-
-  if (!lkw) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No weight data available.</div>`; return; }
-
-  const ach = fitData.find(d=>d.weight!=null&&d.weight<=target);
-  if (ach) {
-    document.getElementById("proj-result").innerHTML = `<div class="card" style="text-align:center">
-      <div style="font-size:11px;color:${C.green};text-transform:uppercase;letter-spacing:.4px">Target Achieved</div>
-      <div style="font-size:28px;font-weight:800;color:${C.green};margin-top:4px">${ach.date}</div>
-      <div style="font-size:13px;color:${C.dim};margin-top:4px">You hit ${ach.weight} kg on this date</div>
-      <div style="font-size:11px;color:${C.dim};margin-top:8px">Lower your target to set a new goal</div>
-    </div>`; return;
-  }
-
-  const r = fitData.filter(d=>d.weight!=null).slice(-14);
-  if (r.length < 7) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Need more data for projection.</div>`; return; }
-
-  const n=r.length,sx=r.reduce((s,_,i)=>s+i,0),sy=r.reduce((s,d)=>s+d.weight,0);
-  const sxy=r.reduce((s,d,i)=>s+i*d.weight,0),sx2=r.reduce((s,_,i)=>s+i*i,0);
-  const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx),ic=(sy-slope*sx)/n;
-  if (slope>=0) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Weight trend is not decreasing. Keep going!</div>`; return; }
-  const days=Math.ceil((target-ic)/slope-(n-1));
-  if (days<=0||days>365) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Set a target below ${lkw} kg.</div>`; return; }
-  const dt=new Date(); dt.setDate(dt.getDate()+days);
-  const dateStr=dt.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
-  const rate=Math.abs(slope*7).toFixed(2);
-
-  document.getElementById("proj-result").innerHTML = `<div class="card">
-    <div style="text-align:center;margin-bottom:14px">
-      <div style="font-size:11px;color:${C.dim};text-transform:uppercase;letter-spacing:.4px">Projected arrival</div>
-      <div style="font-size:28px;font-weight:800;color:${C.green};margin-top:4px">${dateStr}</div>
-      <div style="font-size:13px;color:${C.dim};margin-top:4px">${days} days away</div>
-    </div>
-    <div style="background:${C.surface};border-radius:10px;padding:10px 14px">
-      ${[["Rate","-"+rate+" kg/wk",C.green],["Last weighed",lkw+" kg ("+lkd+")",C.text],["Target",target.toFixed(1)+" kg",C.blue]].map(([l,v,c])=>`
-        <div class="row"><span class="lbl">${l}</span><span class="val" style="color:${c}">${v}</span></div>`).join("")}
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:${C.dim}">Based on last 14 weighed days.</div>
-  </div>`;
-}
-
-function renderNutrition() {
-  const cals = fitData.filter(d=>d.calMin), prots = fitData.filter(d=>d.protMin);
-  const avgCalMin = cals.length?Math.round(cals.reduce((s,d)=>s+d.calMin,0)/cals.length):0;
-  const avgCalMax = cals.length?Math.round(cals.reduce((s,d)=>s+d.calMax,0)/cals.length):0;
-  const avgProtMin = prots.length?Math.round(prots.reduce((s,d)=>s+d.protMin,0)/prots.length):0;
-  const avgProtMax = prots.length?Math.round(prots.reduce((s,d)=>s+d.protMax,0)/prots.length):0;
-  document.getElementById("nutr-sub").textContent = fitData.length + " days tracked";
-  document.getElementById("nutr-avgs").innerHTML = `
-    <div class="stat-card"><div class="stat-label">Avg Calories</div><div class="stat-val" style="color:${C.amber}">${avgCalMin}-${avgCalMax}</div><div class="stat-sub">kcal/day</div></div>
-    <div class="stat-card"><div class="stat-label">Avg Protein</div><div class="stat-val" style="color:${C.green}">${avgProtMin}-${avgProtMax}g</div><div class="stat-sub">grams/day</div></div>`;
-  document.getElementById("nutr-list").innerHTML = [...fitData].reverse().map(d=>`
-    <div class="card" style="padding:10px 14px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:700;color:${C.white}">${d.date}</div>
-        ${d.weight?`<div style="font-size:11px;color:${C.blue};font-weight:600">${d.weight} kg</div>`:""}
-      </div>
-      <div class="grid2">
-        <div style="background:${C.surface};border-radius:8px;padding:8px 10px">
-          <div style="font-size:10px;color:${C.dim};margin-bottom:2px">CALORIES</div>
-          <div style="font-size:15px;font-weight:700;color:${C.amber}">${d.calMin&&d.calMax?d.calMin+"-"+d.calMax:"--"}</div>
-        </div>
-        <div style="background:${C.surface};border-radius:8px;padding:8px 10px">
-          <div style="font-size:10px;color:${C.dim};margin-bottom:2px">PROTEIN</div>
-          <div style="font-size:15px;font-weight:700;color:${C.green}">${d.protMin&&d.protMax?d.protMin+"-"+d.protMax+"g":"--"}</div>
-        </div>
-      </div>
-    </div>`).join("");
-}
-
-function renderStrength() {
-  document.getElementById("str-sub").textContent = strData.length + " sessions logged";
-  if (!strData.length) { document.getElementById("str-list").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No sessions yet.</div>`; return; }
-  document.getElementById("str-list").innerHTML = [...strData].reverse().map(s=>`
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid ${C.border}">
-        <div>
-          <div style="font-size:14px;font-weight:800;color:${C.white}">${s.date}</div>
-          <div style="font-size:11px;color:${C.indigo};font-weight:600;margin-top:2px">${s.workout}</div>
-        </div>
-        <div style="font-size:11px;color:${C.dim}">${s.exercises.length} exercises</div>
-      </div>
-      ${s.exercises.map((ex,j)=>`
-        <div style="margin-bottom:${j<s.exercises.length-1?12:0}px;padding-bottom:${j<s.exercises.length-1?12:0}px;border-bottom:${j<s.exercises.length-1?"1px solid "+C.muted:"none"}">
-          <div style="font-size:12px;font-weight:700;color:${C.purple};margin-bottom:6px">${ex.name}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${ex.sets.map((set,k)=>`
-              <div style="background:${C.surface};border-radius:8px;padding:6px 10px;font-size:11px">
-                <span style="color:${C.dim}">S${k+1} </span>
-                <span style="color:${C.white};font-weight:600">${set.reps}</span>
-                ${set.wt?`<span style="color:${C.amber}"> @ ${set.wt}</span>`:""}
-              </div>`).join("")}
-          </div>
-        </div>`).join("")}
-    </div>`).join("");
-}
-
-function setChart(key) {
-  currentChart = key;
-  document.querySelectorAll("#chart-chips .chip").forEach(b => b.classList.remove("active"));
-  event.target.classList.add("active");
-  renderChart(key);
-}
-
-function renderChart(key) {
-  const COLORS = { weight:C.blue, rhr:C.red, steps:C.green, move:C.orange, burn:C.purple, hrv:C.teal };
-  const color = COLORS[key] || C.blue;
-  const pts = fitData.filter(d=>d[key]!=null);
-  const vals = pts.map(d=>d[key]);
-  if (!vals.length) { document.getElementById("chart-container").innerHTML = `<div style="color:${C.dim};font-size:13px;padding:16px 0">No data yet</div>`; return; }
-  const mn=Math.min(...vals),mx=Math.max(...vals),avg=(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
-  document.getElementById("chart-stats").innerHTML = [["Min",mn,C.red],["Avg",avg,C.amber],["Max",mx,C.green]].map(([l,v,c])=>`
-    <div class="card" style="text-align:center;padding:10px 6px;margin-bottom:0">
-      <div style="font-size:16px;font-weight:700;color:${c}">${typeof v==="number"?v%1?v.toFixed(1):v:v}</div>
-      <div style="font-size:10px;color:${C.dim}">${l}</div>
-    </div>`).join("");
-  const W=320,H=130,PX=10,PY=14,rng=mx-mn||1;
-  const x=i=>PX+(i/(pts.length-1))*(W-PX*2);
-  const y=v=>PY+(H-PY*2)-((v-mn)/rng)*(H-PY*2);
-  const line=pts.map((r,i)=>x(i)+","+y(r[key])).join(" ");
-  const fill=x(0)+","+H+" "+line+" "+x(pts.length-1)+","+H;
-  const ticks=[0,Math.floor(pts.length/2),pts.length-1];
-  document.getElementById("chart-container").innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px">${key.charAt(0).toUpperCase()+key.slice(1)} all time</div>
-    <div style="overflow-x:auto">
-      <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
-        <defs>
-          <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
-            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        <polygon points="${fill}" fill="url(#cg)"/>
-        <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
-        ${ticks.map(i=>`
-          <circle cx="${x(i)}" cy="${y(pts[i][key])}" r="3" fill="${color}"/>
-          <text x="${x(i)}" y="${H-2}" text-anchor="middle" font-size="9" fill="${C.dim}">${pts[i].date}</text>
-          <text x="${x(i)}" y="${Math.max(12,y(pts[i][key])-5)}" text-anchor="middle" font-size="9" fill="${color}">${pts[i][key]}</text>`).join("")}
-      </svg>
-    </div>`;
-}
-
-function renderLog() {
-  document.getElementById("log-list").innerHTML = [...fitData].reverse().map(r=>`
-    <div class="card" style="margin-bottom:8px;padding:12px 14px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:700;color:${C.white}">${r.date}</div>
-        <div style="display:flex;gap:6px">
-          ${r.weight?`<span style="background:${C.blue}22;color:${C.blue};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.weight} kg</span>`:""}
-          ${r.rhr?`<span style="background:${C.red}22;color:${C.red};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.rhr} bpm</span>`:""}
-        </div>
-      </div>
-      <div class="grid2">
-        ${[["Sleep",r.sleep||"--"],["Cal",r.calMin&&r.calMax?r.calMin+"-"+r.calMax:"--"],["Prot",r.protMin&&r.protMax?r.protMin+"-"+r.protMax+"g":"--"],["Steps",r.steps?r.steps.toLocaleString():"--"],["Cardio",r.cardio||"--"],["HRV",r.hrv?r.hrv+" ms":"--"]].map(([l,v])=>`
-          <div style="font-size:11px;padding:2px 0;display:flex;gap:4px">
-            <span style="color:${C.dim};min-width:38px">${l}</span>
-            <span style="color:${C.text}">${v}</span>
-          </div>`).join("")}
-      </div>
-    </div>`).join("");
-}
-
-// ── ADD DATA ──
-function showAddMsg(msg, isOk) {
-  const el = document.getElementById("add-msg");
-  if (!msg) { el.innerHTML = ""; return; }
-  el.innerHTML = `<div class="${isOk?"notice":"notice err"}">${msg}</div>`;
-}
-
-async function parseAndSave() {
-  const input = document.getElementById("json-input").value.trim();
-  if (!input) { showAddMsg("Paste your JSON first", false); return; }
-  try {
-    const p = JSON.parse(input);
-    const f = p.fitness;
-    if (!f || !f.date) throw new Error("fitness.date is required");
-    const date = isoToDate(f.date);
-    const h = f.sleep != null ? Math.floor(f.sleep) : null;
-    const m = f.sleep != null ? Math.round((f.sleep - Math.floor(f.sleep)) * 60) : null;
-    const sleepStr = h != null ? h + ":" + (m < 10 ? "0" : "") + m : null;
-    const newRow = {
-      date, run5k:f.run5k||null, run10k:f.run10k||null,
-      weight:  f.weight   != null ? parseFloat(f.weight)   : null,
-      rhr:     f.rhr      != null ? parseInt(f.rhr)         : null,
-      sleep:   sleepStr,
-      calMin:  f.calMin   != null ? parseInt(f.calMin)      : null,
-      calMax:  f.calMax   != null ? parseInt(f.calMax)      : null,
-      protMin: f.protMin  != null ? parseInt(f.protMin)     : null,
-      protMax: f.protMax  != null ? parseInt(f.protMax)     : null,
-      move:    f.move     != null ? parseInt(f.move)        : null,
-      burn:    f.totalBurn!= null ? parseInt(f.totalBurn)   : null,
-      cardio:  f.cardio   != null ? f.cardio + " min"       : null,
-      steps:   f.steps    != null ? parseInt(f.steps)       : null,
-      dist:    f.distance != null ? parseFloat(f.distance)  : null,
-      hrv:     f.hrv      != null ? parseInt(f.hrv)         : null,
-      notes:   f.notes    || null,
-    };
-    const idx = fitData.findIndex(d => d.date === date);
-    if (idx >= 0) fitData[idx] = newRow;
-    else fitData.push(newRow);
-
-    // Append to Sheets
-    appendToSheet("fitness", [
-      date, newRow.weight, newRow.rhr, newRow.sleep,
-      newRow.calMin, newRow.calMax, newRow.protMin, newRow.protMax,
-      newRow.move, newRow.burn, newRow.cardio, newRow.steps, newRow.dist,
-      newRow.hrv, newRow.notes||"", newRow.run5k||"", newRow.run10k||""
-    ]);
-
-    const s = p.strength;
-    if (s && s.workout) {
-      const exercises = Object.entries(s).filter(([k]) => k !== "workout" && EXMAP[k]).map(([k,v]) => {
-        const str = String(v);
-        const parts = str.split("@").map(x=>x.trim());
-        const repsArr = parts[0].split(",").map(x=>x.trim());
-        const wtsArr = parts[1] ? parts[1].split("/").map(x=>x.trim()) : [];
-        const sets = repsArr.map((reps,i) => ({ reps, wt: wtsArr.length===1?wtsArr[0]:(wtsArr[i]||null) }));
-        return { name: EXMAP[k], sets };
-      });
-      const session = { date, workout: s.workout, exercises };
-      const si = strData.findIndex(x => x.date===date && x.workout===s.workout);
-      if (si >= 0) strData[si] = session;
-      else strData.push(session);
-
-      // Append strength rows to Sheets
-      exercises.forEach((ex, ei) => {
-        ex.sets.forEach((set, si2) => {
-          appendToSheet("strength", [date, s.workout, ex.name, si2+1, set.reps, set.wt||"BW", "kg", ""]);
-        });
-      });
-    }
-
-    document.getElementById("json-input").value = "";
-    showAddMsg("Saved " + date + (s && s.workout ? " + " + s.workout : "") + " and synced to Sheets", true);
-    setTimeout(() => showAddMsg(null), 4000);
-    renderAll();
-  } catch(e) {
-    showAddMsg("Error: " + e.message, false);
-  }
-}
-
-// ── TARGET WEIGHT ──
-function bumpTarget(d) {
-  target = parseFloat((Math.round((target + d) * 10) / 10).toFixed(1));
-  localStorage.setItem(TARGET_KEY, String(target));
-  const lastW = [...fitData].reverse().find(d => d.weight != null);
-  renderProjection(lastW || null);
-}
-
-// ── NAV & SUBS ──
-function showTab(id, btn) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("page-" + id).classList.add("active");
-  btn.classList.add("active");
-}
-
-function showSub(page, sub) {
-  document.querySelectorAll("#sub-home-overview,#sub-home-weekly,#sub-home-runs,#sub-home-projection").forEach(el => el.classList.remove("active"));
-  document.querySelectorAll("#home-chips .chip").forEach(b => b.classList.remove("active"));
-  document.getElementById("sub-home-" + sub).classList.add("active");
-  event.target.classList.add("active");
-}
-
-// ── INIT ──
-const saved = localStorage.getItem(TARGET_KEY);
-if (saved) target = parseFloat(saved);
-loadFromSheets();
-</script>
+<script src="js/app.js"></script>
 </body>
 </html>
