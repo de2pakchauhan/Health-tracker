@@ -556,17 +556,54 @@ function bumpTarget(d) {
 
 // ── NAV & SUBS ──
 function showTab(id, btn) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("page-" + id).classList.add("active");
-  btn.classList.add("active");
+
+    // Hide all main pages
+    document.querySelectorAll(".page").forEach(p => {
+        p.classList.remove("active");
+    });
+
+    // Hide all Home sub-pages
+    document.querySelectorAll(".sub-page").forEach(p => {
+        p.classList.remove("active");
+    });
+
+    // Activate selected page
+    document.getElementById("page-" + id).classList.add("active");
+
+    // If Home is selected, always return to Overview
+    if (id === "home") {
+        document.getElementById("sub-home-overview").classList.add("active");
+
+        document.querySelectorAll("#home-chips .chip").forEach(c=>{
+            c.classList.remove("active");
+        });
+
+        document.querySelector("#home-chips .chip").classList.add("active");
+    }
+
+    // Bottom navigation
+    document.querySelectorAll(".nav-btn").forEach(b=>{
+        b.classList.remove("active");
+    });
+
+    btn.classList.add("active");
+
 }
 
-function showSub(page, sub) {
-  document.querySelectorAll("#sub-home-overview,#sub-home-weekly,#sub-home-runs,#sub-home-projection").forEach(el => el.classList.remove("active"));
-  document.querySelectorAll("#home-chips .chip").forEach(b => b.classList.remove("active"));
-  document.getElementById("sub-home-" + sub).classList.add("active");
-  event.target.classList.add("active");
+function showSub(page, sub, btn){
+
+    document.querySelectorAll(".sub-page").forEach(el=>{
+        el.classList.remove("active");
+    });
+
+    document.querySelectorAll("#home-chips .chip").forEach(el=>{
+        el.classList.remove("active");
+    });
+
+    document.getElementById("sub-home-"+sub).classList.add("active");
+
+    btn.classList.add("active");
+}
 }
 
 // ── INIT ──
