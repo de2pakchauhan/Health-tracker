@@ -1,6 +1,7 @@
 // ==========================================
 // Health Log V2
 // Bootstrap
+// Bundle 1
 // ==========================================
 
 const Bootstrap = {
@@ -18,7 +19,7 @@ const Bootstrap = {
             setLoading(true);
 
             // ----------------------------
-            // Load Google Sheets
+            // Load Data
             // ----------------------------
 
             const [
@@ -46,13 +47,19 @@ const Bootstrap = {
                 Parser.parseStrength(strengthRows);
 
             // ----------------------------
-            // Latest Entry
+            // Latest Record
             // ----------------------------
 
             setLatestFitness();
 
             // ----------------------------
-            // Connection
+            // Calculate Analytics
+            // ----------------------------
+
+            Analytics.calculate();
+
+            // ----------------------------
+            // Connected
             // ----------------------------
 
             setConnected(true);
@@ -62,43 +69,28 @@ const Bootstrap = {
             Loader.hide();
 
             // ----------------------------
-            // Calculate Stats
+            // Render Dashboard
             // ----------------------------
 
-            Analytics.calculate();
-
-            // ----------------------------
-            // Render
-            // ----------------------------
+            UI.init();
 
             UI.renderDashboard();
 
-            UI.renderCharts();
-
-            UI.renderNutrition();
-
-            UI.renderStrength();
-
-            UI.renderHistory();
-
-            console.log(
-                "Health Log Ready"
-            );
+            console.log("Health Log Ready");
 
         }
-
-        catch(error){
+        catch (error) {
 
             console.error(error);
 
             setConnected(false);
 
+            setLoading(false);
+
             Loader.hide();
 
             alert(
-
                 "Unable to connect to Google Sheets."
-
             );
 
         }
@@ -107,15 +99,11 @@ const Bootstrap = {
 
 };
 
-
 // ==========================================
-// Start App
+// Start
 // ==========================================
 
 document.addEventListener(
-
     "DOMContentLoaded",
-
-    Bootstrap.init
-
+    () => Bootstrap.init()
 );
