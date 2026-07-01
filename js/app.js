@@ -5,14 +5,6 @@ const C = {
   dim:"#6b6b8a",text:"#e2e2f0",white:"#ffffff",indigo:"#818cf8",green:"#34d399",
   red:"#f87171",amber:"#fbbf24",orange:"#fb923c",blue:"#60a5fa",purple:"#a78bfa",teal:"#2dd4bf"
 };
-const EXMAP = {
-  floorPress:"Floor Press",shoulderPress:"Shoulder Press",lateralRaise:"Lateral Raise",
-  ohTricepsExt:"OH Triceps Ext",plank:"Plank",dbRow:"DB Row",rdl:"RDL",
-  hammerCurl:"Hammer Curl",dbCurl:"DB Curl",reverseFly:"Reverse Fly",deadBug:"Dead Bug",
-  inclinePress:"Incline Press",latPulldown:"Lat Pulldown",seatedRow:"Seated Row",
-  facePull:"Face Pull",bicepCurl:"Bicep Curl",legPress:"Leg Press",legCurl:"Leg Curl",
-  calfRaise:"Calf Raise",gobletSquat:"Goblet Squat"
-};
 
 let fitData = [], strData = [], target = 70, currentChart = "weight";
 
@@ -478,69 +470,91 @@ async function parseAndSave() {
   if (!input) { showAddMsg("Paste your JSON first", false); return; }
   try {
     const p = JSON.parse(input);
-    const f = p.fitness;
-    if (!f || !f.date) throw new Error("fitness.date is required");
-    const date = isoToDate(f.date);
-    const h = f.sleep != null ? Math.floor(f.sleep) : null;
-    const m = f.sleep != null ? Math.round((f.sleep - Math.floor(f.sleep)) * 60) : null;
-    const sleepStr = h != null ? h + ":" + (m < 10 ? "0" : "") + m : null;
-    const newRow = {
-      date, run5k:f.run5k||null, run10k:f.run10k||null,
-      weight:  f.weight   != null ? parseFloat(f.weight)   : null,
-      rhr:     f.rhr      != null ? parseInt(f.rhr)         : null,
-      sleep:   sleepStr,
-      calMin:  f.calMin   != null ? parseInt(f.calMin)      : null,
-      calMax:  f.calMax   != null ? parseInt(f.calMax)      : null,
-      protMin: f.protMin  != null ? parseInt(f.protMin)     : null,
-      protMax: f.protMax  != null ? parseInt(f.protMax)     : null,
-      move:    f.move     != null ? parseInt(f.move)        : null,
-      burn:    f.totalBurn!= null ? parseInt(f.totalBurn)   : null,
-      cardio:  f.cardio   != null ? f.cardio + " min"       : null,
-      steps:   f.steps    != null ? parseInt(f.steps)       : null,
-      dist:    f.distance != null ? parseFloat(f.distance)  : null,
-      hrv:     f.hrv      != null ? parseInt(f.hrv)         : null,
-      notes:   f.notes    || null,
-    };
-    const idx = fitData.findIndex(d => d.date === date);
-    if (idx >= 0) fitData[idx] = newRow;
-    else fitData.push(newRow);
+    let savedDates = [];
 
-    // Append to Sheets
-    appendToSheet("fitness", [
-      date, newRow.weight, newRow.rhr, newRow.sleep,
-      newRow.calMin, newRow.calMax, newRow.protMin, newRow.protMax,
-      newRow.move, newRow.burn, newRow.cardio, newRow.steps, newRow.dist,
-      newRow.hrv, newRow.notes||"", newRow.run5k||"", newRow.run10k||""
-    ]);
+    // ── FITNESS ──
+    if (p.fitness) {
+      const f = p.fitness;
+      if (!f.date) throw new Error("fitness.date is required");
+      const date = isoToDate(f.date);
+      const h = f.sleep != null ? Math.floor(f.sleep) : null;
+      const m = f.sleep != null ? Math.round((f.sleep - Math.floor(f.sleep)) * 60) : null;
+      const sleepStr = h != null ? h + ":" + (m < 10 ? "0" : "") + m : null;
+      const newRow = {
+        date,
+        weight:  f.weight   != null ? parseFloat(f.weight)   : null,
+        rhr:     f.rhr      != null ? parseInt(f.rhr)         : null,
+        sleep:   sleepStr,
+        calMin:  f.calMin   != null ? parseInt(f.calMin)      : null,
+        calMax:  f.calMax   != null ? parseInt(f.calMax)      : null,
+        protMin: f.protMin  != null ? parseInt(f.protMin)     : null,
+        protMax: f.protMax  != null ? parseInt(f.protMax)     : null,
+        move:    f.move     != null ? parseInt(f.move)        : null,
+        burn:    f.totalBurn!= null ? parseInt(f.totalBurn)   : null,
+        cardio:  f.cardio   != null ? f.cardio + " min"       : null,
+        steps:   f.steps    != null ? parseInt(f.steps)       : null,
+        dist:    f.distance != null ? parseFloat(f.distance)  : null,
+        hrv:     f.hrv      != null ? parseInt(f.hrv)         : null,
+        run5k:   f.run5k    || null,
+        run10k:  f.run10k   || null,
+        notes:   f.notes    || null,
+      };
+      const idx = fitData.findIndex(d => d.date === date);
+      if (idx >= 0) fitData[idx] = newRow;
+      else fitData.push(newRow);
 
-    const s = p.strength;
-    if (s && s.workout) {
-      const exercises = Object.entries(s).filter(([k]) => k !== "workout" && EXMAP[k]).map(([k,v]) => {
-        const str = String(v);
-        const parts = str.split("@").map(x=>x.trim());
-        const repsArr = parts[0].split(",").map(x=>x.trim());
-        const wtsArr = parts[1] ? parts[1].split("/").map(x=>x.trim()) : [];
-        const sets = repsArr.map((reps,i) => ({ reps, wt: wtsArr.length===1?wtsArr[0]:(wtsArr[i]||null) }));
-        return { name: EXMAP[k], sets };
-      });
+      appendToSheet("fitness", [
+        date, newRow.weight, newRow.rhr, newRow.sleep,
+        newRow.calMin, newRow.calMax, newRow.protMin, newRow.protMax,
+        newRow.move, newRow.burn, newRow.cardio, newRow.steps, newRow.dist,
+        newRow.hrv, newRow.notes || "", newRow.run5k || "", newRow.run10k || ""
+      ]);
+      savedDates.push(date);
+    }
+
+    // ── STRENGTH ──
+    if (p.strength) {
+      const s = p.strength;
+      if (!s.date) throw new Error("strength.date is required");
+      if (!s.workout) throw new Error("strength.workout is required");
+      const date = isoToDate(s.date);
+
+      // Parse all keys except "workout" and "date" as exercises
+      const exercises = Object.entries(s)
+        .filter(([k]) => k !== "workout" && k !== "date")
+        .map(([k, v]) => {
+          const str = String(v);
+          const parts = str.split("@").map(x => x.trim());
+          const repsArr = parts[0].split(",").map(x => x.trim());
+          const wtsArr = parts[1] ? parts[1].split("/").map(x => x.trim()) : [];
+          const sets = repsArr.map((reps, i) => ({
+            reps,
+            wt: wtsArr.length === 1 ? wtsArr[0] : (wtsArr[i] || null)
+          }));
+          return { name: k, sets };
+        });
+
       const session = { date, workout: s.workout, exercises };
-      const si = strData.findIndex(x => x.date===date && x.workout===s.workout);
+      const si = strData.findIndex(x => x.date === date && x.workout === s.workout);
       if (si >= 0) strData[si] = session;
       else strData.push(session);
 
-      // Append strength rows to Sheets
+      // Append each set to the strength sheet
       exercises.forEach((ex, ei) => {
         ex.sets.forEach((set, si2) => {
-          appendToSheet("strength", [date, s.workout, ex.name, si2+1, set.reps, set.wt||"BW", "kg", ""]);
+          appendToSheet("strength", [date, s.workout, ex.name, si2 + 1, set.reps, set.wt || "BW", "kg", ""]);
         });
       });
+      savedDates.push(date);
     }
 
+    if (savedDates.length === 0) throw new Error("No fitness or strength data provided");
+
     document.getElementById("json-input").value = "";
-    showAddMsg("Saved " + date + (s && s.workout ? " + " + s.workout : "") + " and synced to Sheets", true);
+    showAddMsg("Saved " + savedDates.join(", ") + " and synced to Sheets", true);
     setTimeout(() => showAddMsg(null), 4000);
     renderAll();
-  } catch(e) {
+  } catch (e) {
     showAddMsg("Error: " + e.message, false);
   }
 }
