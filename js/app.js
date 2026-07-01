@@ -86,7 +86,7 @@ function parseRow(r) {
 }
 
 function parseStrRows(rows) {
-  console.log("🔎 parseStrRows received", rows.length, "rows");
+  console.log("parseStrRows received", rows.length, "rows");
   const sessions = {};
   rows.forEach(r => {
     const date = isoToDate(r.date) || String(r.date || "");
@@ -96,15 +96,23 @@ function parseStrRows(rows) {
     const exName = String(r.exercise || "").trim();
     if (!sessions[key].exercises[exName]) sessions[key].exercises[exName] = [];
     sessions[key].exercises[exName].push({
+      setNum: r.set ? parseInt(r.set) : 999,
       reps: r.reps ? String(r.reps).trim() : "",
       wt: r.weight && String(r.weight).trim() !== "BW" ? String(r.weight).trim() : null,
     });
   });
   const result = Object.values(sessions).map(s => ({
-    date: s.date, workout: s.workout,
-    exercises: Object.entries(s.exercises).map(([name, sets]) => ({ name, sets })),
+    date: s.date,
+    workout: s.workout,
+    exercises: Object.entries(s.exercises).map(([name, sets]) => ({
+      name,
+      // Sort by set number to guarantee correct order
+      sets: sets
+        .sort((a, b) => a.setNum - b.setNum)
+        .map(({ reps, wt }) => ({ reps, wt })),
+    })),
   }));
-  console.log("✅ Final parsed strength data:", result);
+  console.log("Parsed strength sessions:", result);
   return result;
 }
 
@@ -154,7 +162,7 @@ async function appendToSheet(sheet, row) {
     await fetch(SHEET_URL, {
       method: "POST", mode: "no-cors",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ sheet, action: "append", row }),
+      body: JSON.stringify({ sheet, action: "upsert", row }),
     });
   } catch (_) { }
 }
