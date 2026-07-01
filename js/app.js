@@ -1,17 +1,26 @@
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxunxRA-KKBYblKoCH02drul3Lrw0ngmq5uY-w2HXotwdBfqKs1TDJhc5rD7NiwhKX86Q/exec";
 const TARGET_KEY = "health-target-v1";
 const C = {
-  bg:"#080810",surface:"#11111f",card:"#181828",border:"#1e1e35",muted:"#2a2a45",
-  dim:"#6b6b8a",text:"#e2e2f0",white:"#ffffff",indigo:"#818cf8",green:"#34d399",
-  red:"#f87171",amber:"#fbbf24",orange:"#fb923c",blue:"#60a5fa",purple:"#a78bfa",teal:"#2dd4bf"
+  bg: "#080810", surface: "#11111f", card: "#181828", border: "#1e1e35", muted: "#2a2a45",
+  dim: "#6b6b8a", text: "#e2e2f0", white: "#ffffff", indigo: "#818cf8", green: "#34d399",
+  red: "#f87171", amber: "#fbbf24", orange: "#fb923c", blue: "#60a5fa", purple: "#a78bfa", teal: "#2dd4bf"
 };
 
 let fitData = [], strData = [], target = 70, currentChart = "weight";
 
 // ── HELPERS ──
+
+// Convert all object keys to lowercase
+function lowerKeys(obj) {
+  return Object.keys(obj).reduce((acc, key) => {
+    acc[key.toLowerCase()] = obj[key];
+    return acc;
+  }, {});
+}
+
 function sleepH(s) {
   if (!s) return null;
-  const clean = String(s).replace("~","").trim();
+  const clean = String(s).replace("~", "").trim();
   const parts = clean.split(":");
   if (parts.length >= 2) return parseInt(parts[0]) + parseInt(parts[1]) / 60;
   return parseFloat(clean) || null;
@@ -33,14 +42,15 @@ function isoToDate(s) {
   if (/^\d{2}-[A-Za-z]{3}/.test(str)) return str;
   if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
     const d = new Date(str);
-    const day = String(d.getUTCDate()).padStart(2,"0");
-    const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
     return day + "-" + mon;
   }
   return str;
 }
 
 function parseRow(r) {
+  // r keys are already lowercased
   function parseSleep(v) {
     if (!v) return null;
     const s = String(v);
@@ -48,51 +58,54 @@ function parseRow(r) {
     if (s.includes("T")) {
       try {
         const d = new Date(s);
-        return d.getUTCHours() + ":" + String(d.getUTCMinutes()).padStart(2,"0");
-      } catch(_) {}
+        return d.getUTCHours() + ":" + String(d.getUTCMinutes()).padStart(2, "0");
+      } catch (_) { }
     }
     return s;
   }
   const date = isoToDate(r.date) || String(r.date);
   return {
     date,
-    weight:  r.weight   ? parseFloat(r.weight)   : null,
-    rhr:     r.rhr      ? parseInt(r.rhr)         : null,
-    sleep:   parseSleep(r.sleep),
-    calMin:  r.calmin   ? parseInt(r.calmin)      : null,
-    calMax:  r.calmax   ? parseInt(r.calmax)      : null,
-    protMin: r.protmin  ? parseInt(r.protmin)     : null,
-    protMax: r.protmax  ? parseInt(r.protmax)     : null,
-    move:    r.move     ? parseInt(r.move)        : null,
-    burn:    r.totalburn? parseInt(r.totalburn)   : null,
-    cardio:  r.cardio   ? String(r.cardio)        : null,
-    steps:   r.steps    ? parseInt(r.steps)       : null,
-    dist:    r.distance ? parseFloat(r.distance)  : null,
-    hrv:     r.hrv      ? parseInt(r.hrv)         : null,
-    notes:   r.notes    ? String(r.notes)         : null,
-    run5k:   r["5k"]    ? String(r["5k"])         : null,
-    run10k:  r["10k"]   ? String(r["10k"])        : null,
+    weight: r.weight ? parseFloat(r.weight) : null,
+    rhr: r.rhr ? parseInt(r.rhr) : null,
+    sleep: parseSleep(r.sleep),
+    calMin: r.calmin ? parseInt(r.calmin) : null,
+    calMax: r.calmax ? parseInt(r.calmax) : null,
+    protMin: r.protmin ? parseInt(r.protmin) : null,
+    protMax: r.protmax ? parseInt(r.protmax) : null,
+    move: r.move ? parseInt(r.move) : null,
+    burn: r.totalburn ? parseInt(r.totalburn) : null,
+    cardio: r.cardio ? String(r.cardio) : null,
+    steps: r.steps ? parseInt(r.steps) : null,
+    dist: r.distance ? parseFloat(r.distance) : null,
+    hrv: r.hrv ? parseInt(r.hrv) : null,
+    notes: r.notes ? String(r.notes) : null,
+    run5k: r["5k"] ? String(r["5k"]) : null,
+    run10k: r["10k"] ? String(r["10k"]) : null,
   };
 }
 
 function parseStrRows(rows) {
+  console.log("🔎 parseStrRows received", rows.length, "rows");
   const sessions = {};
   rows.forEach(r => {
     const date = isoToDate(r.date) || String(r.date || "");
-    const workout = String(r.workout || "");
+    const workout = String(r.workout || "").trim();
     const key = date + "|" + workout;
     if (!sessions[key]) sessions[key] = { date, workout, exercises: {} };
-    const exName = String(r.exercise || "");
+    const exName = String(r.exercise || "").trim();
     if (!sessions[key].exercises[exName]) sessions[key].exercises[exName] = [];
     sessions[key].exercises[exName].push({
-      reps: r.reps ? String(r.reps) : "",
-      wt: r.weight && String(r.weight) !== "BW" ? String(r.weight) : null,
+      reps: r.reps ? String(r.reps).trim() : "",
+      wt: r.weight && String(r.weight).trim() !== "BW" ? String(r.weight).trim() : null,
     });
   });
-  return Object.values(sessions).map(s => ({
+  const result = Object.values(sessions).map(s => ({
     date: s.date, workout: s.workout,
     exercises: Object.entries(s.exercises).map(([name, sets]) => ({ name, sets })),
   }));
+  console.log("✅ Final parsed strength data:", result);
+  return result;
 }
 
 // ── FETCH FROM SHEETS ──
@@ -117,7 +130,7 @@ async function loadFromSheets() {
       fetch(SHEET_URL + "?sheet=strength").then(r => r.json()),
     ]);
     if (fr.status === "ok" && fr.data && fr.data.length > 0) {
-      fitData = fr.data.map(parseRow).filter(r => r.date);
+      fitData = fr.data.map(row => parseRow(lowerKeys(row))).filter(r => r.date);
       setDot("ok");
       setSyncMsg("Live from Google Sheets");
       setTimeout(() => setSyncMsg(""), 3000);
@@ -126,10 +139,10 @@ async function loadFromSheets() {
       setSyncMsg("No data in Fitness sheet", true);
     }
     if (sr.status === "ok" && sr.data && sr.data.length > 0) {
-      strData = parseStrRows(sr.data);
+      strData = parseStrRows(sr.data.map(row => lowerKeys(row)));
     }
     renderAll();
-  } catch(e) {
+  } catch (e) {
     setDot("err");
     setSyncMsg("Cannot reach Sheets: " + e.message, true);
     document.getElementById("hdr-sub").textContent = "Sheets unreachable";
@@ -143,10 +156,11 @@ async function appendToSheet(sheet, row) {
       headers: { "Content-Type": "text/plain" },
       body: JSON.stringify({ sheet, action: "append", row }),
     });
-  } catch(_) {}
+  } catch (_) { }
 }
 
-// ── RENDER ──
+// ── RENDER FUNCTIONS ──
+
 function renderAll() {
   if (!fitData.length) return;
   const first = fitData[0];
@@ -169,17 +183,17 @@ function renderOverview(first, latest, lastW) {
   const daysAgo = lastW ? fitData.length - 1 - fitData.indexOf(lastW) : 0;
   const lost = lkw && first.weight ? (first.weight - lkw).toFixed(2) : "0";
   const rhrD = latest.rhr - first.rhr;
-  const avg7 = Math.round(fitData.slice(-7).reduce((s,d) => s+(d.steps||0),0) / 7);
+  const avg7 = Math.round(fitData.slice(-7).reduce((s, d) => s + (d.steps || 0), 0) / 7);
   const sc = recScore(latest);
   const col = sc >= 75 ? C.green : sc >= 50 ? C.amber : C.red;
   const slabel = sc >= 75 ? "Ready" : sc >= 50 ? "Moderate" : "Rest";
 
   document.getElementById("stat-cards").innerHTML = [
-    { label:"Weight Lost", v:"-"+lost+" kg", sub:first.weight+" to "+lkw, col:C.green },
-    { label:"Last Weighed", v:(lkw||"--")+" kg", sub:(lkd||"--")+(daysAgo>0?" ("+daysAgo+"d ago)":""), col:C.blue },
-    { label:"Resting HR", v:(latest.rhr||"--")+" bpm", sub:(rhrD<0?"down ":"up ")+Math.abs(rhrD)+" from start", col:C.red },
-    { label:"7d Avg Steps", v:avg7.toLocaleString(), sub:"last 7 days", col:C.orange },
-  ].map(({label,v,sub,col}) => `
+    { label: "Weight Lost", v: "-" + lost + " kg", sub: first.weight + " to " + lkw, col: C.green },
+    { label: "Last Weighed", v: (lkw || "--") + " kg", sub: (lkd || "--") + (daysAgo > 0 ? " (" + daysAgo + "d ago)" : ""), col: C.blue },
+    { label: "Resting HR", v: (latest.rhr || "--") + " bpm", sub: (rhrD < 0 ? "down " : "up ") + Math.abs(rhrD) + " from start", col: C.red },
+    { label: "7d Avg Steps", v: avg7.toLocaleString(), sub: "last 7 days", col: C.orange },
+  ].map(({ label, v, sub, col }) => `
     <div class="stat-card">
       <div class="stat-label">${label}</div>
       <div class="stat-val" style="color:${col}">${v}</div>
@@ -187,15 +201,15 @@ function renderOverview(first, latest, lastW) {
     </div>
   `).join("");
 
-  const r=28,cx=36,cy=36,sw=6,circ=2*Math.PI*r,dash=(sc/100)*circ;
+  const r = 28, cx = 36, cy = 36, sw = 6, circ = 2 * Math.PI * r, dash = (sc / 100) * circ;
   document.getElementById("recovery-card").innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div style="display:flex;align-items:center;gap:10px">
         <svg width="72" height="72">
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${C.muted}" stroke-width="${sw}"/>
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}"
-            stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${circ/4}" stroke-linecap="round"/>
-          <text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="13" font-weight="700" fill="${col}">${sc}</text>
+            stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${circ / 4}" stroke-linecap="round"/>
+          <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="${col}">${sc}</text>
         </svg>
         <div>
           <div style="font-size:16px;font-weight:700;color:${col}">${slabel}</div>
@@ -204,7 +218,7 @@ function renderOverview(first, latest, lastW) {
       </div>
       <div style="text-align:right">
         <div style="font-size:11px;color:${C.dim};margin-bottom:6px">${latest.date}</div>
-        ${[["Sleep",latest.sleep||"--"],["RHR",(latest.rhr||"--")+" bpm"],["HRV",latest.hrv?latest.hrv+" ms":"--"]].map(([l,v])=>`
+        ${[["Sleep", latest.sleep || "--"], ["RHR", (latest.rhr || "--") + " bpm"], ["HRV", latest.hrv ? latest.hrv + " ms" : "--"]].map(([l, v]) => `
           <div style="display:flex;justify-content:flex-end;gap:12px;padding:3px 0">
             <span style="font-size:13px;color:${C.dim}">${l}</span>
             <span style="font-size:14px;font-weight:600">${v}</span>
@@ -217,32 +231,32 @@ function renderOverview(first, latest, lastW) {
     <div class="grid2" style="margin-bottom:10px">
       <div style="background:${C.surface};border-radius:10px;padding:10px 12px">
         <div style="font-size:10px;color:${C.dim};margin-bottom:2px">CALORIES</div>
-        <div style="font-size:18px;font-weight:800;color:${C.amber}">${latest.calMin&&latest.calMax?latest.calMin+"-"+latest.calMax:"--"}</div>
+        <div style="font-size:18px;font-weight:800;color:${C.amber}">${latest.calMin && latest.calMax ? latest.calMin + "-" + latest.calMax : "--"}</div>
         <div style="font-size:10px;color:${C.dim}">kcal</div>
       </div>
       <div style="background:${C.surface};border-radius:10px;padding:10px 12px">
         <div style="font-size:10px;color:${C.dim};margin-bottom:2px">PROTEIN</div>
-        <div style="font-size:18px;font-weight:800;color:${C.green}">${latest.protMin&&latest.protMax?latest.protMin+"-"+latest.protMax+"g":"--"}</div>
+        <div style="font-size:18px;font-weight:800;color:${C.green}">${latest.protMin && latest.protMax ? latest.protMin + "-" + latest.protMax + "g" : "--"}</div>
         <div style="font-size:10px;color:${C.dim}">grams</div>
       </div>
     </div>
-    ${[["Cardio",latest.cardio||"--"],["Steps",latest.steps?latest.steps.toLocaleString():"--"],["Distance",latest.dist?latest.dist+" km":"--"],["Move",latest.move?latest.move+" kcal":"--"],["Total Burn",latest.burn?latest.burn+" kcal":"--"]].map(([l,v])=>`
+    ${[["Cardio", latest.cardio || "--"], ["Steps", latest.steps ? latest.steps.toLocaleString() : "--"], ["Distance", latest.dist ? latest.dist + " km" : "--"], ["Move", latest.move ? latest.move + " kcal" : "--"], ["Total Burn", latest.burn ? latest.burn + " kcal" : "--"]].map(([l, v]) => `
       <div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("")}`;
 }
 
 function renderWeekly() {
   const weeks = [];
   for (let i = 0; i < fitData.length; i += 7) {
-    const c = fitData.slice(i, i+7);
+    const c = fitData.slice(i, i + 7);
     if (c.length < 3) continue;
-    const wt = c.filter(d=>d.weight), sl = c.map(d=>sleepH(d.sleep)).filter(Boolean), pr = c.filter(d=>d.protMin&&d.protMax);
+    const wt = c.filter(d => d.weight), sl = c.map(d => sleepH(d.sleep)).filter(Boolean), pr = c.filter(d => d.protMin && d.protMax);
     weeks.push({
-      label: c[0].date+" to "+c[c.length-1].date,
-      avgWt: wt.length?(wt.reduce((s,d)=>s+d.weight,0)/wt.length).toFixed(2):null,
-      avgRhr: c.filter(d=>d.rhr).length?Math.round(c.filter(d=>d.rhr).reduce((s,d)=>s+d.rhr,0)/c.filter(d=>d.rhr).length):null,
-      totSteps: c.reduce((s,d)=>s+(d.steps||0),0),
-      avgSl: sl.length?(sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(1):null,
-      avgProt: pr.length?Math.round(pr.reduce((s,d)=>s+(d.protMin+d.protMax)/2,0)/pr.length):null,
+      label: c[0].date + " to " + c[c.length - 1].date,
+      avgWt: wt.length ? (wt.reduce((s, d) => s + d.weight, 0) / wt.length).toFixed(2) : null,
+      avgRhr: c.filter(d => d.rhr).length ? Math.round(c.filter(d => d.rhr).reduce((s, d) => s + d.rhr, 0) / c.filter(d => d.rhr).length) : null,
+      totSteps: c.reduce((s, d) => s + (d.steps || 0), 0),
+      avgSl: sl.length ? (sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1) : null,
+      avgProt: pr.length ? Math.round(pr.reduce((s, d) => s + (d.protMin + d.protMax) / 2, 0) / pr.length) : null,
       count: c.length,
     });
   }
@@ -250,44 +264,44 @@ function renderWeekly() {
     <div class="card">
       <div style="font-size:12px;font-weight:700;color:${C.indigo};margin-bottom:8px">${w.label}</div>
       <div class="grid3">
-        ${[["Avg Wt",w.avgWt?w.avgWt+"kg":"--",C.blue],["Avg RHR",w.avgRhr?String(w.avgRhr):"--",C.red],["Avg Sleep",w.avgSl?w.avgSl+"h":"--",C.purple],["Steps",w.totSteps.toLocaleString(),C.green],["Avg Prot",w.avgProt?w.avgProt+"g":"--",C.amber],["Days",w.count+"/7",C.dim]].map(([l,v,c])=>`
+        ${[["Avg Wt", w.avgWt ? w.avgWt + "kg" : "--", C.blue], ["Avg RHR", w.avgRhr ? String(w.avgRhr) : "--", C.red], ["Avg Sleep", w.avgSl ? w.avgSl + "h" : "--", C.purple], ["Steps", w.totSteps.toLocaleString(), C.green], ["Avg Prot", w.avgProt ? w.avgProt + "g" : "--", C.amber], ["Days", w.count + "/7", C.dim]].map(([l, v, c]) => `
           <div><div style="font-size:10px;color:${C.dim}">${l}</div><div style="font-size:14px;font-weight:700;color:${c}">${v}</div></div>`).join("")}
       </div>
     </div>`).join("");
 }
 
 function renderRuns() {
-  const fiveKs = fitData.filter(d=>d.run5k).map(d => {
+  const fiveKs = fitData.filter(d => d.run5k).map(d => {
     const m = String(d.run5k).match(/(\d+):(\d+)/);
     if (!m) return null;
-    const secs = parseInt(m[1])*60+parseInt(m[2]);
-    return { date:d.date, secs, label:String(parseInt(m[1])).padStart(2,"0")+":"+String(parseInt(m[2])).padStart(2,"0") };
+    const secs = parseInt(m[1]) * 60 + parseInt(m[2]);
+    return { date: d.date, secs, label: String(parseInt(m[1])).padStart(2, "0") + ":" + String(parseInt(m[2])).padStart(2, "0") };
   }).filter(Boolean);
-  const best = fiveKs.length ? fiveKs.reduce((b,c)=>c.secs<b.secs?c:b) : null;
-  const allRuns = fitData.filter(d=>d.cardio&&d.steps>2000);
+  const best = fiveKs.length ? fiveKs.reduce((b, c) => c.secs < b.secs ? c : b) : null;
+  const allRuns = fitData.filter(d => d.cardio && d.steps > 2000);
 
   document.getElementById("sub-home-runs").innerHTML = `
     <div class="card" style="margin-bottom:12px">
       <div style="font-size:13px;font-weight:700;color:${C.purple};margin-bottom:10px">5K Races</div>
-      ${fiveKs.length===0?`<div style="font-size:13px;color:${C.dim}">No 5K times logged yet</div>`:""}
-      ${fiveKs.map((r,i)=>{
-        const prev=fiveKs[i-1],diff=prev?prev.secs-r.secs:null;
+      ${fiveKs.length === 0 ? `<div style="font-size:13px;color:${C.dim}">No 5K times logged yet</div>` : ""}
+      ${fiveKs.map((r, i) => {
+        const prev = fiveKs[i - 1], diff = prev ? prev.secs - r.secs : null;
         return `<div class="row">
           <span class="lbl">${r.date}</span>
           <span style="display:flex;align-items:center;gap:8px">
-            <span class="val" style="color:${r===best?C.amber:C.text}">${r.label}${r===best?" PB":""}</span>
-            ${diff!==null?`<span style="font-size:11px;font-weight:700;color:${diff>0?C.green:C.red}">${diff>0?"-"+diff+"s":"+"+Math.abs(diff)+"s"}</span>`:""}
+            <span class="val" style="color:${r === best ? C.amber : C.text}">${r.label}${r === best ? " PB" : ""}</span>
+            ${diff !== null ? `<span style="font-size:11px;font-weight:700;color:${diff > 0 ? C.green : C.red}">${diff > 0 ? "-" + diff + "s" : "+" + Math.abs(diff) + "s"}</span>` : ""}
           </span></div>`;
       }).join("")}
-      ${fiveKs.length>1?`<div style="margin-top:8px;background:${C.surface};border-radius:8px;padding:8px 12px;font-size:12px;color:${C.dim}">Total off first: <span style="color:${C.green};font-weight:700">${fiveKs[0].secs-best.secs}s</span></div>`:""}
+      ${fiveKs.length > 1 ? `<div style="margin-top:8px;background:${C.surface};border-radius:8px;padding:8px 12px;font-size:12px;color:${C.dim}">Total off first: <span style="color:${C.green};font-weight:700">${fiveKs[0].secs - best.secs}s</span></div>` : ""}
     </div>
     <div class="card">
       <div style="font-size:13px;font-weight:700;color:${C.blue};margin-bottom:10px">All Cardio Sessions</div>
-      ${allRuns.map(r=>`<div class="row">
+      ${allRuns.map(r => `<div class="row">
         <span class="lbl">${r.date}</span>
         <span style="display:flex;align-items:center;gap:8px">
           <span class="val">${r.cardio}</span>
-          <span style="font-size:11px;color:${C.dim}">${r.steps?r.steps.toLocaleString():""} steps</span>
+          <span style="font-size:11px;color:${C.dim}">${r.steps ? r.steps.toLocaleString() : ""} steps</span>
         </span></div>`).join("")}
     </div>`;
 }
@@ -296,11 +310,11 @@ function renderProjection(lastW) {
   const lkw = lastW ? lastW.weight : null;
   const lkd = lastW ? lastW.date : null;
   document.getElementById("target-display").textContent = target.toFixed(1) + " kg";
-  document.getElementById("still-to-lose").textContent = "Still to lose: " + Math.max(0,(lkw||0)-target).toFixed(1) + " kg";
+  document.getElementById("still-to-lose").textContent = "Still to lose: " + Math.max(0, (lkw || 0) - target).toFixed(1) + " kg";
 
   if (!lkw) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No weight data available.</div>`; return; }
 
-  const ach = fitData.find(d=>d.weight!=null&&d.weight<=target);
+  const ach = fitData.find(d => d.weight != null && d.weight <= target);
   if (ach) {
     document.getElementById("proj-result").innerHTML = `<div class="card" style="text-align:center">
       <div style="font-size:11px;color:${C.green};text-transform:uppercase;letter-spacing:.4px">Target Achieved</div>
@@ -310,18 +324,18 @@ function renderProjection(lastW) {
     </div>`; return;
   }
 
-  const r = fitData.filter(d=>d.weight!=null).slice(-14);
+  const r = fitData.filter(d => d.weight != null).slice(-14);
   if (r.length < 7) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Need more data for projection.</div>`; return; }
 
-  const n=r.length,sx=r.reduce((s,_,i)=>s+i,0),sy=r.reduce((s,d)=>s+d.weight,0);
-  const sxy=r.reduce((s,d,i)=>s+i*d.weight,0),sx2=r.reduce((s,_,i)=>s+i*i,0);
-  const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx),ic=(sy-slope*sx)/n;
-  if (slope>=0) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Weight trend is not decreasing. Keep going!</div>`; return; }
-  const days=Math.ceil((target-ic)/slope-(n-1));
-  if (days<=0||days>365) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Set a target below ${lkw} kg.</div>`; return; }
-  const dt=new Date(); dt.setDate(dt.getDate()+days);
-  const dateStr=dt.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
-  const rate=Math.abs(slope*7).toFixed(2);
+  const n = r.length, sx = r.reduce((s, _, i) => s + i, 0), sy = r.reduce((s, d) => s + d.weight, 0);
+  const sxy = r.reduce((s, d, i) => s + i * d.weight, 0), sx2 = r.reduce((s, _, i) => s + i * i, 0);
+  const slope = (n * sxy - sx * sy) / (n * sx2 - sx * sx), ic = (sy - slope * sx) / n;
+  if (slope >= 0) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Weight trend is not decreasing. Keep going!</div>`; return; }
+  const days = Math.ceil((target - ic) / slope - (n - 1));
+  if (days <= 0 || days > 365) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Set a target below ${lkw} kg.</div>`; return; }
+  const dt = new Date(); dt.setDate(dt.getDate() + days);
+  const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const rate = Math.abs(slope * 7).toFixed(2);
 
   document.getElementById("proj-result").innerHTML = `<div class="card">
     <div style="text-align:center;margin-bottom:14px">
@@ -330,7 +344,7 @@ function renderProjection(lastW) {
       <div style="font-size:13px;color:${C.dim};margin-top:4px">${days} days away</div>
     </div>
     <div style="background:${C.surface};border-radius:10px;padding:10px 14px">
-      ${[["Rate","-"+rate+" kg/wk",C.green],["Last weighed",lkw+" kg ("+lkd+")",C.text],["Target",target.toFixed(1)+" kg",C.blue]].map(([l,v,c])=>`
+      ${[["Rate", "-" + rate + " kg/wk", C.green], ["Last weighed", lkw + " kg (" + lkd + ")", C.text], ["Target", target.toFixed(1) + " kg", C.blue]].map(([l, v, c]) => `
         <div class="row"><span class="lbl">${l}</span><span class="val" style="color:${c}">${v}</span></div>`).join("")}
     </div>
     <div style="margin-top:10px;font-size:11px;color:${C.dim}">Based on last 14 weighed days.</div>
@@ -338,29 +352,29 @@ function renderProjection(lastW) {
 }
 
 function renderNutrition() {
-  const cals = fitData.filter(d=>d.calMin), prots = fitData.filter(d=>d.protMin);
-  const avgCalMin = cals.length?Math.round(cals.reduce((s,d)=>s+d.calMin,0)/cals.length):0;
-  const avgCalMax = cals.length?Math.round(cals.reduce((s,d)=>s+d.calMax,0)/cals.length):0;
-  const avgProtMin = prots.length?Math.round(prots.reduce((s,d)=>s+d.protMin,0)/prots.length):0;
-  const avgProtMax = prots.length?Math.round(prots.reduce((s,d)=>s+d.protMax,0)/prots.length):0;
+  const cals = fitData.filter(d => d.calMin), prots = fitData.filter(d => d.protMin);
+  const avgCalMin = cals.length ? Math.round(cals.reduce((s, d) => s + d.calMin, 0) / cals.length) : 0;
+  const avgCalMax = cals.length ? Math.round(cals.reduce((s, d) => s + d.calMax, 0) / cals.length) : 0;
+  const avgProtMin = prots.length ? Math.round(prots.reduce((s, d) => s + d.protMin, 0) / prots.length) : 0;
+  const avgProtMax = prots.length ? Math.round(prots.reduce((s, d) => s + d.protMax, 0) / prots.length) : 0;
   document.getElementById("nutr-sub").textContent = fitData.length + " days tracked";
   document.getElementById("nutr-avgs").innerHTML = `
     <div class="stat-card"><div class="stat-label">Avg Calories</div><div class="stat-val" style="color:${C.amber}">${avgCalMin}-${avgCalMax}</div><div class="stat-sub">kcal/day</div></div>
     <div class="stat-card"><div class="stat-label">Avg Protein</div><div class="stat-val" style="color:${C.green}">${avgProtMin}-${avgProtMax}g</div><div class="stat-sub">grams/day</div></div>`;
-  document.getElementById("nutr-list").innerHTML = [...fitData].reverse().map(d=>`
+  document.getElementById("nutr-list").innerHTML = [...fitData].reverse().map(d => `
     <div class="card" style="padding:10px 14px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:13px;font-weight:700;color:${C.white}">${d.date}</div>
-        ${d.weight?`<div style="font-size:11px;color:${C.blue};font-weight:600">${d.weight} kg</div>`:""}
+        ${d.weight ? `<div style="font-size:11px;color:${C.blue};font-weight:600">${d.weight} kg</div>` : ""}
       </div>
       <div class="grid2">
         <div style="background:${C.surface};border-radius:8px;padding:8px 10px">
           <div style="font-size:10px;color:${C.dim};margin-bottom:2px">CALORIES</div>
-          <div style="font-size:15px;font-weight:700;color:${C.amber}">${d.calMin&&d.calMax?d.calMin+"-"+d.calMax:"--"}</div>
+          <div style="font-size:15px;font-weight:700;color:${C.amber}">${d.calMin && d.calMax ? d.calMin + "-" + d.calMax : "--"}</div>
         </div>
         <div style="background:${C.surface};border-radius:8px;padding:8px 10px">
           <div style="font-size:10px;color:${C.dim};margin-bottom:2px">PROTEIN</div>
-          <div style="font-size:15px;font-weight:700;color:${C.green}">${d.protMin&&d.protMax?d.protMin+"-"+d.protMax+"g":"--"}</div>
+          <div style="font-size:15px;font-weight:700;color:${C.green}">${d.protMin && d.protMax ? d.protMin + "-" + d.protMax + "g" : "--"}</div>
         </div>
       </div>
     </div>`).join("");
@@ -369,7 +383,7 @@ function renderNutrition() {
 function renderStrength() {
   document.getElementById("str-sub").textContent = strData.length + " sessions logged";
   if (!strData.length) { document.getElementById("str-list").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No sessions yet.</div>`; return; }
-  document.getElementById("str-list").innerHTML = [...strData].reverse().map(s=>`
+  document.getElementById("str-list").innerHTML = [...strData].reverse().map(s => `
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid ${C.border}">
         <div>
@@ -378,15 +392,15 @@ function renderStrength() {
         </div>
         <div style="font-size:11px;color:${C.dim}">${s.exercises.length} exercises</div>
       </div>
-      ${s.exercises.map((ex,j)=>`
-        <div style="margin-bottom:${j<s.exercises.length-1?12:0}px;padding-bottom:${j<s.exercises.length-1?12:0}px;border-bottom:${j<s.exercises.length-1?"1px solid "+C.muted:"none"}">
+      ${s.exercises.map((ex, j) => `
+        <div style="margin-bottom:${j < s.exercises.length - 1 ? 12 : 0}px;padding-bottom:${j < s.exercises.length - 1 ? 12 : 0}px;border-bottom:${j < s.exercises.length - 1 ? "1px solid " + C.muted : "none"}">
           <div style="font-size:12px;font-weight:700;color:${C.purple};margin-bottom:6px">${ex.name}</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${ex.sets.map((set,k)=>`
+            ${ex.sets.map((set, k) => `
               <div style="background:${C.surface};border-radius:8px;padding:6px 10px;font-size:11px">
-                <span style="color:${C.dim}">S${k+1} </span>
+                <span style="color:${C.dim}">S${k + 1} </span>
                 <span style="color:${C.white};font-weight:600">${set.reps}</span>
-                ${set.wt?`<span style="color:${C.amber}"> @ ${set.wt}</span>`:""}
+                ${set.wt ? `<span style="color:${C.amber}"> @ ${set.wt}</span>` : ""}
               </div>`).join("")}
           </div>
         </div>`).join("")}
@@ -401,25 +415,25 @@ function setChart(key) {
 }
 
 function renderChart(key) {
-  const COLORS = { weight:C.blue, rhr:C.red, steps:C.green, move:C.orange, burn:C.purple, hrv:C.teal };
+  const COLORS = { weight: C.blue, rhr: C.red, steps: C.green, move: C.orange, burn: C.purple, hrv: C.teal };
   const color = COLORS[key] || C.blue;
-  const pts = fitData.filter(d=>d[key]!=null);
-  const vals = pts.map(d=>d[key]);
+  const pts = fitData.filter(d => d[key] != null);
+  const vals = pts.map(d => d[key]);
   if (!vals.length) { document.getElementById("chart-container").innerHTML = `<div style="color:${C.dim};font-size:13px;padding:16px 0">No data yet</div>`; return; }
-  const mn=Math.min(...vals),mx=Math.max(...vals),avg=(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
-  document.getElementById("chart-stats").innerHTML = [["Min",mn,C.red],["Avg",avg,C.amber],["Max",mx,C.green]].map(([l,v,c])=>`
+  const mn = Math.min(...vals), mx = Math.max(...vals), avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
+  document.getElementById("chart-stats").innerHTML = [["Min", mn, C.red], ["Avg", avg, C.amber], ["Max", mx, C.green]].map(([l, v, c]) => `
     <div class="card" style="text-align:center;padding:10px 6px;margin-bottom:0">
-      <div style="font-size:16px;font-weight:700;color:${c}">${typeof v==="number"?v%1?v.toFixed(1):v:v}</div>
+      <div style="font-size:16px;font-weight:700;color:${c}">${typeof v === "number" ? v % 1 ? v.toFixed(1) : v : v}</div>
       <div style="font-size:10px;color:${C.dim}">${l}</div>
     </div>`).join("");
-  const W=320,H=130,PX=10,PY=14,rng=mx-mn||1;
-  const x=i=>PX+(i/(pts.length-1))*(W-PX*2);
-  const y=v=>PY+(H-PY*2)-((v-mn)/rng)*(H-PY*2);
-  const line=pts.map((r,i)=>x(i)+","+y(r[key])).join(" ");
-  const fill=x(0)+","+H+" "+line+" "+x(pts.length-1)+","+H;
-  const ticks=[0,Math.floor(pts.length/2),pts.length-1];
+  const W = 320, H = 130, PX = 10, PY = 14, rng = mx - mn || 1;
+  const x = i => PX + (i / (pts.length - 1)) * (W - PX * 2);
+  const y = v => PY + (H - PY * 2) - ((v - mn) / rng) * (H - PY * 2);
+  const line = pts.map((r, i) => x(i) + "," + y(r[key])).join(" ");
+  const fill = x(0) + "," + H + " " + line + " " + x(pts.length - 1) + "," + H;
+  const ticks = [0, Math.floor(pts.length / 2), pts.length - 1];
   document.getElementById("chart-container").innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px">${key.charAt(0).toUpperCase()+key.slice(1)} all time</div>
+    <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px">${key.charAt(0).toUpperCase() + key.slice(1)} all time</div>
     <div style="overflow-x:auto">
       <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
         <defs>
@@ -430,26 +444,26 @@ function renderChart(key) {
         </defs>
         <polygon points="${fill}" fill="url(#cg)"/>
                 <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
-        ${ticks.map(i=>`
+        ${ticks.map(i => `
           <circle cx="${x(i)}" cy="${y(pts[i][key])}" r="3" fill="${color}"/>
-          <text x="${x(i)}" y="${H-2}" text-anchor="middle" font-size="9" fill="${C.dim}">${pts[i].date}</text>
-          <text x="${x(i)}" y="${Math.max(12,y(pts[i][key])-5)}" text-anchor="middle" font-size="9" fill="${color}">${pts[i][key]}</text>`).join("")}
+          <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="${C.dim}">${pts[i].date}</text>
+          <text x="${x(i)}" y="${Math.max(12, y(pts[i][key]) - 5)}" text-anchor="middle" font-size="9" fill="${color}">${pts[i][key]}</text>`).join("")}
       </svg>
     </div>`;
 }
 
 function renderLog() {
-  document.getElementById("log-list").innerHTML = [...fitData].reverse().map(r=>`
+  document.getElementById("log-list").innerHTML = [...fitData].reverse().map(r => `
     <div class="card" style="margin-bottom:8px;padding:12px 14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
         <div style="font-size:13px;font-weight:700;color:${C.white}">${r.date}</div>
         <div style="display:flex;gap:6px">
-          ${r.weight?`<span style="background:${C.blue}22;color:${C.blue};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.weight} kg</span>`:""}
-          ${r.rhr?`<span style="background:${C.red}22;color:${C.red};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.rhr} bpm</span>`:""}
+          ${r.weight ? `<span style="background:${C.blue}22;color:${C.blue};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.weight} kg</span>` : ""}
+          ${r.rhr ? `<span style="background:${C.red}22;color:${C.red};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.rhr} bpm</span>` : ""}
         </div>
       </div>
       <div class="grid2">
-        ${[["Sleep",r.sleep||"--"],["Cal",r.calMin&&r.calMax?r.calMin+"-"+r.calMax:"--"],["Prot",r.protMin&&r.protMax?r.protMin+"-"+r.protMax+"g":"--"],["Steps",r.steps?r.steps.toLocaleString():"--"],["Cardio",r.cardio||"--"],["HRV",r.hrv?r.hrv+" ms":"--"]].map(([l,v])=>`
+        ${[["Sleep", r.sleep || "--"], ["Cal", r.calMin && r.calMax ? r.calMin + "-" + r.calMax : "--"], ["Prot", r.protMin && r.protMax ? r.protMin + "-" + r.protMax + "g" : "--"], ["Steps", r.steps ? r.steps.toLocaleString() : "--"], ["Cardio", r.cardio || "--"], ["HRV", r.hrv ? r.hrv + " ms" : "--"]].map(([l, v]) => `
           <div style="font-size:11px;padding:2px 0;display:flex;gap:4px">
             <span style="color:${C.dim};min-width:38px">${l}</span>
             <span style="color:${C.text}">${v}</span>
@@ -459,10 +473,11 @@ function renderLog() {
 }
 
 // ── ADD DATA ──
+
 function showAddMsg(msg, isOk) {
   const el = document.getElementById("add-msg");
   if (!msg) { el.innerHTML = ""; return; }
-  el.innerHTML = `<div class="${isOk?"notice":"notice err"}">${msg}</div>`;
+  el.innerHTML = `<div class="${isOk ? "notice" : "notice err"}">${msg}</div>`;
 }
 
 async function parseAndSave() {
@@ -482,22 +497,22 @@ async function parseAndSave() {
       const sleepStr = h != null ? h + ":" + (m < 10 ? "0" : "") + m : null;
       const newRow = {
         date,
-        weight:  f.weight   != null ? parseFloat(f.weight)   : null,
-        rhr:     f.rhr      != null ? parseInt(f.rhr)         : null,
-        sleep:   sleepStr,
-        calMin:  f.calMin   != null ? parseInt(f.calMin)      : null,
-        calMax:  f.calMax   != null ? parseInt(f.calMax)      : null,
-        protMin: f.protMin  != null ? parseInt(f.protMin)     : null,
-        protMax: f.protMax  != null ? parseInt(f.protMax)     : null,
-        move:    f.move     != null ? parseInt(f.move)        : null,
-        burn:    f.totalBurn!= null ? parseInt(f.totalBurn)   : null,
-        cardio:  f.cardio   != null ? f.cardio + " min"       : null,
-        steps:   f.steps    != null ? parseInt(f.steps)       : null,
-        dist:    f.distance != null ? parseFloat(f.distance)  : null,
-        hrv:     f.hrv      != null ? parseInt(f.hrv)         : null,
-        run5k:   f.run5k    || null,
-        run10k:  f.run10k   || null,
-        notes:   f.notes    || null,
+        weight: f.weight != null ? parseFloat(f.weight) : null,
+        rhr: f.rhr != null ? parseInt(f.rhr) : null,
+        sleep: sleepStr,
+        calMin: f.calMin != null ? parseInt(f.calMin) : null,
+        calMax: f.calMax != null ? parseInt(f.calMax) : null,
+        protMin: f.protMin != null ? parseInt(f.protMin) : null,
+        protMax: f.protMax != null ? parseInt(f.protMax) : null,
+        move: f.move != null ? parseInt(f.move) : null,
+        burn: f.totalBurn != null ? parseInt(f.totalBurn) : null,
+        cardio: f.cardio != null ? f.cardio + " min" : null,
+        steps: f.steps != null ? parseInt(f.steps) : null,
+        dist: f.distance != null ? parseFloat(f.distance) : null,
+        hrv: f.hrv != null ? parseInt(f.hrv) : null,
+        run5k: f.run5k || null,
+        run10k: f.run10k || null,
+        notes: f.notes || null,
       };
       const idx = fitData.findIndex(d => d.date === date);
       if (idx >= 0) fitData[idx] = newRow;
@@ -560,6 +575,7 @@ async function parseAndSave() {
 }
 
 // ── TARGET WEIGHT ──
+
 function bumpTarget(d) {
   target = parseFloat((Math.round((target + d) * 10) / 10).toFixed(1));
   localStorage.setItem(TARGET_KEY, String(target));
@@ -568,6 +584,7 @@ function bumpTarget(d) {
 }
 
 // ── NAV & SUBS ──
+
 function showTab(id, btn) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
