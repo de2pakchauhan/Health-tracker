@@ -580,10 +580,44 @@ async function parseAndSave() {
       else strData.push(session);
 
       // Append each set to the strength sheet
-      exercises.forEach((ex, ei) => {
-        ex.sets.forEach((set, si2) => {
-          appendToSheet("strength", [date, s.workout, ex.name, si2 + 1, set.reps, set.wt || "BW", "kg", ""]);
+      // Save compactly (Set column = number of identical sets)
+      exercises.forEach(ex => {
+      
+        const groups = [];
+      
+        ex.sets.forEach(set => {
+      
+          const last = groups[groups.length - 1];
+      
+          if (
+            last &&
+            last.reps === set.reps &&
+            last.wt === set.wt
+          ) {
+            last.count++;
+          } else {
+            groups.push({
+              count: 1,
+              reps: set.reps,
+              wt: set.wt
+            });
+          }
+      
         });
+      
+        groups.forEach(g => {
+          appendToSheet("strength", [
+            date,
+            s.workout,
+            ex.name,
+            g.count,
+            g.reps,
+            g.wt || "BW",
+            "kg",
+            ""
+          ]);
+        });
+      
       });
       savedDates.push(date);
     }
