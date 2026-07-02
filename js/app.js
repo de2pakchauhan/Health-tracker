@@ -87,35 +87,52 @@ function parseRow(r) {
 
 function parseStrRows(rows) {
   console.log("parseStrRows received", rows.length, "rows");
+
   const sessions = {};
+
   rows.forEach(r => {
     const date = isoToDate(r.date) || String(r.date || "");
     const workout = String(r.workout || "").trim();
     const key = date + "|" + workout;
-    if (!sessions[key]) sessions[key] = { date, workout, exercises: {} };
+
+    if (!sessions[key]) {
+      sessions[key] = {
+        date,
+        workout,
+        exercises: {}
+      };
+    }
+
     const exName = String(r.exercise || "").trim();
-    if (!sessions[key].exercises[exName]) sessions[key].exercises[exName] = [];
-    sessions[key].exercises[exName].push({
-      setNum: r.set ? parseInt(r.set) : 999,
-      reps: r.reps ? String(r.reps).trim() : "",
-      wt: r.weight && String(r.weight).trim() !== "BW" ? String(r.weight).trim() : null,
-    });
+
+    if (!sessions[key].exercises[exName]) {
+      sessions[key].exercises[exName] = [];
+    }
+
+    // "Set" column stores NUMBER OF SETS
+    const setCount = parseInt(r.set) || 1;
+
+    for (let i = 0; i < setCount; i++) {
+      sessions[key].exercises[exName].push({
+        reps: r.reps ? String(r.reps).trim() : "",
+        wt:
+          r.weight &&
+          String(r.weight).trim().toUpperCase() !== "BW"
+            ? String(r.weight).trim()
+            : null
+      });
+    }
   });
-  const result = Object.values(sessions).map(s => ({
+
+  return Object.values(sessions).map(s => ({
     date: s.date,
     workout: s.workout,
     exercises: Object.entries(s.exercises).map(([name, sets]) => ({
       name,
-      // Sort by set number to guarantee correct order
-      sets: sets
-        .sort((a, b) => a.setNum - b.setNum)
-        .map(({ reps, wt }) => ({ reps, wt })),
-    })),
+      sets
+    }))
   }));
-  console.log("Parsed strength sessions:", result);
-  return result;
 }
-
 // ── FETCH FROM SHEETS ──
 function setDot(state) {
   const dot = document.getElementById("dot");
