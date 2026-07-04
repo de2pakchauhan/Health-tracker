@@ -151,8 +151,16 @@ async function loadFromSheets() {
   setSyncMsg("Loading from Google Sheets...");
   try {
     const [fr, sr] = await Promise.all([
-      fetch(SHEET_URL + "?sheet=fitness").then(r => r.json()),
-      fetch(SHEET_URL + "?sheet=strength").then(r => r.json()),
+      fetch(SHEET_URL + "?sheet=fitness")
+        .then(r => {
+          if (!r.ok) throw new Error("Fitness GET " + r.status);
+          return r.json();
+        }),
+      fetch(SHEET_URL + "?sheet=strength")
+        .then(r => {
+          if (!r.ok) throw new Error("Strength GET " + r.status);
+          return r.json();
+        }),
     ]);
     if (fr.status === "ok" && fr.data && fr.data.length > 0) {
       fitData = fr.data.map(row => parseRow(lowerKeys(row))).filter(r => r.date);
