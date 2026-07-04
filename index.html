@@ -81,69 +81,19 @@
 <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
 <div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON – you can include Fitness, Strength, or both. Strength format: <b>Sets x Reps @ Weight</b>. Separate different groups with <b>;</b>. Example: <b>3x10@8kg;1x15@6kg</b>. Use <b>BW</b> for bodyweight.</div>
 <div id="add-msg"></div>
-
-<div class="code-block">
-<div class="code-title" style="color:var(--amber)">Fitness only</div>
-<div class="code-line">{ "fitness": {</div>
-<div class="code-line">  "date": "2026-06-25",</div>
-<div class="code-line">  "weight": 72.3,  "rhr": 49,  "sleep": 6.5,</div>
-<div class="code-line">  "calMin": 1200,  "calMax": 1600,</div>
-<div class="code-line">  "protMin": 55,   "protMax": 70,</div>
-<div class="code-line">  "move": 650,  "totalBurn": 2500,</div>
-<div class="code-line">  "cardio": 45,  "steps": 8500,</div>
-<div class="code-line">  "distance": 6.8,  "hrv": 52</div>
-<div class="code-line">} }</div>
+<div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:8px">
+Example JSON
 </div>
 
-<div class="code-block">
-<div class="code-title" style="color:var(--purple)">Strength only (any exercise names)</div>
-<div class="code-line">{ "strength": {</div>
-<div class="code-line">&nbsp;&nbsp;"date": "2026-07-04",</div>
-<div class="code-line">&nbsp;&nbsp;"workout": "Pull A",</div>
-<div class="code-line">&nbsp;&nbsp;"Single-Arm Dumbbell Row": "4x10@8kg",</div>
-<div class="code-line">&nbsp;&nbsp;"Hammer Curl": "3x10@4kg",</div>
-<div class="code-line">&nbsp;&nbsp;"Dumbbell Curl": "3x6@4kg",</div>
-<div class="code-line">&nbsp;&nbsp;"Reverse Fly": "3x10@2kg",</div>
-<div class="code-line">&nbsp;&nbsp;"Romanian Deadlift": "3x12@8kg;3x10@BW",</div>
-<div class="code-line">&nbsp;&nbsp;"Dead Bug": "2x8@BW"</div>
-<div class="code-line">} }</div>
-</div>
-<div class="code-block">
-<div class="code-title" style="color:var(--teal)">Both fitness and strength</div>
-
-<div class="code-line">{</div>
-
-<div class="code-line">&nbsp;&nbsp;"fitness": {</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"date": "2026-07-04",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"weight": 72.7,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"rhr": 52,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"sleep": 7,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"calMin": 1700,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"calMax": 1900,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"protMin": 110,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"protMax": 125,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"move": 620,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"totalBurn": 2740,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"cardio": 45,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"steps": 9100,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"distance": 7.1,</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"hrv": 51</div>
-<div class="code-line">&nbsp;&nbsp;},</div>
-
-<div class="code-line">&nbsp;&nbsp;"strength": {</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"date": "2026-07-04",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"workout": "Push A",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Floor Press": "3x10@8kg;1x15@6kg",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Shoulder Press": "3x10@6kg",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Lateral Raise": "1x10@4kg;2x10@2kg;1x6@2kg",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"OH Triceps Ext": "1x12@6kg;1x5@6kg;2x10@4kg",</div>
-<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Plank": "1x30s@BW;1x16s@BW"</div>
-<div class="code-line">&nbsp;&nbsp;}</div>
-
-<div class="code-line">}</div>
-
+<div class="chips" id="example-chips">
+    <button class="chip active" onclick="showExample('fitness',this)">Fitness</button>
+    <button class="chip" onclick="showExample('strength',this)">Strength</button>
+    <button class="chip" onclick="showExample('both',this)">Both</button>
 </div>
 
+<div class="card" style="margin-top:12px;margin-bottom:16px">
+<pre id="example-json" style="margin:0;white-space:pre-wrap;font-size:12px;color:var(--white)"></pre>
+</div>
 <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
 <button class="btn btn-indigo" onclick="parseAndSave()">Parse and Save</button>
 <button class="btn btn-ghost" onclick="document.getElementById('json-input').value='';showAddMsg(null)">Clear</button>
