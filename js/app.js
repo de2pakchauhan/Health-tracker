@@ -790,6 +790,9 @@ function showExample(type, btn){
 
     document.getElementById("example-json").textContent =
         EXAMPLES[type];
+    
+    document.getElementById("json-input").value =
+        EXAMPLES[type];
 
 }
 
@@ -798,6 +801,9 @@ const saved = localStorage.getItem(TARGET_KEY);
 if (saved) target = parseFloat(saved);
 
 document.getElementById("example-json").textContent =
+    EXAMPLES.fitness;
+
+document.getElementById("json-input").value =
     EXAMPLES.fitness;
 
 loadFromSheets();
