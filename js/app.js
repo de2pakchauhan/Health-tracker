@@ -711,7 +711,93 @@ function showSub(page, sub) {
   event.target.classList.add("active");
 }
 
+// ─────────────────────────────────────────────
+// Example JSON Chips
+// ─────────────────────────────────────────────
+
+const EXAMPLES = {
+
+fitness: `{
+  "fitness": {
+    "date":"2026-07-04",
+    "weight":72.7,
+    "rhr":52,
+    "sleep":7,
+    "calMin":1700,
+    "calMax":1900,
+    "protMin":110,
+    "protMax":125,
+    "move":620,
+    "totalBurn":2740,
+    "cardio":45,
+    "steps":9100,
+    "distance":7.1,
+    "hrv":51,
+    "notes":"Good recovery"
+  }
+}`,
+
+strength: `{
+  "strength": {
+    "date":"2026-07-04",
+    "workout":"Push A",
+    "Floor Press":"3x10@8kg;1x15@6kg",
+    "Shoulder Press":"3x10@6kg",
+    "Lateral Raise":"1x10@4kg;2x10@2kg;1x6@2kg",
+    "OH Triceps Ext":"1x12@6kg;1x5@6kg;2x10@4kg",
+    "Plank":"1x30s@BW;1x16s@BW"
+  }
+}`,
+
+both: `{
+  "fitness":{
+    "date":"2026-07-04",
+    "weight":72.7,
+    "rhr":52,
+    "sleep":7,
+    "calMin":1700,
+    "calMax":1900,
+    "protMin":110,
+    "protMax":125,
+    "move":620,
+    "totalBurn":2740,
+    "cardio":45,
+    "steps":9100,
+    "distance":7.1,
+    "hrv":51
+  },
+
+  "strength":{
+    "date":"2026-07-04",
+    "workout":"Push A",
+    "Floor Press":"3x10@8kg;1x15@6kg",
+    "Shoulder Press":"3x10@6kg",
+    "Lateral Raise":"1x10@4kg;2x10@2kg;1x6@2kg",
+    "OH Triceps Ext":"1x12@6kg;1x5@6kg;2x10@4kg",
+    "Plank":"1x30s@BW;1x16s@BW"
+  }
+}`
+
+};
+
+function showExample(type, btn){
+
+    document
+      .querySelectorAll("#example-chips .chip")
+      .forEach(c=>c.classList.remove("active"));
+
+    btn.classList.add("active");
+
+    document.getElementById("example-json").textContent =
+        EXAMPLES[type];
+
+}
+
 // ── INIT ──
 const saved = localStorage.getItem(TARGET_KEY);
 if (saved) target = parseFloat(saved);
+
+document.getElementById("example-json").textContent =
+    EXAMPLES.fitness;
+
 loadFromSheets();
