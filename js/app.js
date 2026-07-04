@@ -711,17 +711,7 @@ function showSub(page, sub) {
   event.target.classList.add("active");
 }
 
-// ── INIT ──
-const saved = localStorage.getItem(TARGET_KEY);
-if (saved) target = parseFloat(saved);
 
-document.getElementById("example-json").textContent =
-    EXAMPLES.fitness;
-
-document.getElementById("json-input").value =
-    EXAMPLES.fitness;
-
-loadFromSheets();
 
 // ---------- Example JSON Chips ----------
 
@@ -802,3 +792,15 @@ function showExample(type, btn) {
 document.addEventListener("DOMContentLoaded", function () {
     showExample("fitness");
 });
+
+// ── INIT ──
+const saved = localStorage.getItem(TARGET_KEY);
+if (saved) target = parseFloat(saved);
+
+document.getElementById("example-json").textContent =
+    EXAMPLES.fitness;
+
+document.getElementById("json-input").value =
+    EXAMPLES.fitness;
+
+loadFromSheets();
