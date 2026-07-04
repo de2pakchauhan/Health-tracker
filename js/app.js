@@ -656,7 +656,7 @@ async function parseAndSave() {
             });
           }
       
-        }
+        });
       
         for (const g of groups) {
           await appendToSheet("strength", [
@@ -671,7 +671,7 @@ async function parseAndSave() {
           ]);
         }
       
-      });
+      }
       savedDates.push(date);
     }
 
