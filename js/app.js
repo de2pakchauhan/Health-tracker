@@ -639,7 +639,7 @@ async function parseAndSave() {
       
         });
       
-        groups.forEach(g => {
+        for (const g of groups) {
           await appendToSheet("strength", [
             date,
             s.workout,
@@ -650,7 +650,7 @@ async function parseAndSave() {
             "kg",
             ""
           ]);
-        });
+        }
       
       });
       savedDates.push(date);
