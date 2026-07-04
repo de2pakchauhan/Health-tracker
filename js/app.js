@@ -554,7 +554,7 @@ async function parseAndSave() {
       if (idx >= 0) fitData[idx] = newRow;
       else fitData.push(newRow);
 
-      appendToSheet("fitness", [
+      await appendToSheet("fitness", [
         date, newRow.weight, newRow.rhr, newRow.sleep,
         newRow.calMin, newRow.calMax, newRow.protMin, newRow.protMax,
         newRow.move, newRow.burn, newRow.cardio, newRow.steps, newRow.dist,
@@ -645,7 +645,7 @@ async function parseAndSave() {
         });
       
         groups.forEach(g => {
-          appendToSheet("strength", [
+          await appendToSheet("strength", [
             date,
             s.workout,
             ex.name,
