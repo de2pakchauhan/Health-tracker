@@ -79,7 +79,7 @@
 <!-- ADD -->
 <div class="page" id="page-add">
 <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
-<div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON – you can include fitness, strength, or both. Each section has its own date and is independent.</div>
+<div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON – you can include Fitness, Strength, or both. Strength format: <b>Sets x Reps @ Weight</b>. Separate different groups with <b>;</b>. Example: <b>3x10@8kg;1x15@6kg</b>. Use <b>BW</b> for bodyweight.</div>
 <div id="add-msg"></div>
 
 <div class="code-block">
@@ -98,12 +98,14 @@
 <div class="code-block">
 <div class="code-title" style="color:var(--purple)">Strength only (any exercise names)</div>
 <div class="code-line">{ "strength": {</div>
-<div class="code-line">  "date": "2026-06-27",</div>
-<div class="code-line">  "workout": "Pull Day",</div>
-<div class="code-line">  "pullUp": "8,7,6 @ BW",</div>
-<div class="code-line">  "dbRow": "12,10,10 @ 15kg/15kg/17kg",</div>
-<div class="code-line">  "hammerCurl": "10,10,8 @ 10kg/10kg/12kg",</div>
-<div class="code-line">  "facePull": "15,15,12 @ 20kg"</div>
+<div class="code-line">&nbsp;&nbsp;"date": "2026-07-04",</div>
+<div class="code-line">&nbsp;&nbsp;"workout": "Pull A",</div>
+<div class="code-line">&nbsp;&nbsp;"Single-Arm Dumbbell Row": "4x10@8kg",</div>
+<div class="code-line">&nbsp;&nbsp;"Hammer Curl": "3x10@4kg",</div>
+<div class="code-line">&nbsp;&nbsp;"Dumbbell Curl": "3x6@4kg",</div>
+<div class="code-line">&nbsp;&nbsp;"Reverse Fly": "3x10@2kg",</div>
+<div class="code-line">&nbsp;&nbsp;"Romanian Deadlift": "3x12@8kg;3x10@BW",</div>
+<div class="code-line">&nbsp;&nbsp;"Dead Bug": "2x8@BW"</div>
 <div class="code-line">} }</div>
 </div>
 
@@ -119,13 +121,15 @@
 <div class="code-line">    "cardio": 30, "steps": 9000,</div>
 <div class="code-line">    "distance": 7.2, "hrv": 58</div>
 <div class="code-line">  },</div>
-<div class="code-line">  "strength": {</div>
-<div class="code-line">    "date": "2026-06-27",</div>
-<div class="code-line">    "workout": "Push A",</div>
-<div class="code-line">    "floorPress": "10,10,10 @ 8kg",</div>
-<div class="code-line">    "plank": "30s,30s"</div>
-<div class="code-line">  }</div>
-<div class="code-line">}</div>
+<div class="code-line">&nbsp;&nbsp;"strength": {</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"date": "2026-07-04",</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"workout": "Push A",</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Floor Press": "3x10@8kg;1x15@6kg",</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Shoulder Press": "3x10@6kg",</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Lateral Raise": "1x10@4kg;2x10@2kg;1x6@2kg",</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"OH Triceps Ext": "1x12@6kg;1x5@6kg;2x10@4kg",</div>
+<div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;"Plank": "1x30s@BW;1x16s@BW"</div>
+<div class="code-line">&nbsp;&nbsp;}</div>
 </div>
 
 <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
