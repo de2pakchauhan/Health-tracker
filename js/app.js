@@ -175,13 +175,24 @@ async function loadFromSheets() {
 }
 
 async function appendToSheet(sheet, row) {
-  try {
-    await fetch(SHEET_URL, {
-      method: "POST", mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ sheet, action: "upsert", row }),
-    });
-  } catch (_) { }
+
+  const res = await fetch(SHEET_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      sheet,
+      action: "upsert",
+      row
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error("HTTP " + res.status);
+  }
+
+  return await res.json();
 }
 
 // ── RENDER FUNCTIONS ──
