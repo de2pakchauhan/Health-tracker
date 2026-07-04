@@ -174,20 +174,31 @@ async function loadFromSheets() {
   }
 }
 
-async function appendToSheet(sheet,row){
+async function appendToSheet(sheet, row) {
 
-  await fetch(SHEET_URL,{
-    method:"POST",
-    headers:{
-      "Content-Type":"text/plain"
+  const response = await fetch(SHEET_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
     },
-    body:JSON.stringify({
+    body: JSON.stringify({
       sheet,
-      action:"append",
+      action: "append",
       row
     })
   });
 
+  const text = await response.text();
+
+  console.log("Sheet:", sheet);
+  console.log("Status:", response.status);
+  console.log("Response:", text);
+
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+
+  return text;
 }
 
 // ── RENDER FUNCTIONS ──
