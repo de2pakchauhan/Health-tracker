@@ -183,7 +183,7 @@ async function appendToSheet(sheet, row) {
     },
     body: JSON.stringify({
       sheet,
-      action: "upsert",
+      action: "append",
       row
     })
   });
