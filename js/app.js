@@ -615,7 +615,7 @@ async function parseAndSave() {
 
       // Append each set to the strength sheet
       // Save compactly (Set column = number of identical sets)
-      exercises.forEach(ex => {
+      for (const ex of exercises) {
       
         const groups = [];
       
@@ -637,7 +637,7 @@ async function parseAndSave() {
             });
           }
       
-        });
+        }
       
         for (const g of groups) {
           await appendToSheet("strength", [
