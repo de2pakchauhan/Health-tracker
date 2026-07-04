@@ -563,15 +563,43 @@ async function parseAndSave() {
       const exercises = Object.entries(s)
         .filter(([k]) => k !== "workout" && k !== "date")
         .map(([k, v]) => {
-          const str = String(v);
-          const parts = str.split("@").map(x => x.trim());
-          const repsArr = parts[0].split(",").map(x => x.trim());
-          const wtsArr = parts[1] ? parts[1].split("/").map(x => x.trim()) : [];
-          const sets = repsArr.map((reps, i) => ({
-            reps,
-            wt: wtsArr.length === 1 ? wtsArr[0] : (wtsArr[i] || null)
-          }));
-          return { name: k, sets };
+      
+          const rows = String(v)
+            .split(";")
+            .map(x => x.trim())
+            .filter(Boolean);
+      
+          const sets = [];
+      
+          rows.forEach(row => {
+      
+            // Example:
+            // 3x10@8kg
+            // 1x15@6kg
+            // 2x30s@BW
+      
+            const m = row.match(/^(\d+)\s*x\s*([^@]+)\s*@\s*(.+)$/i);
+      
+            if (!m) return;
+      
+            const count = parseInt(m[1]);
+            const reps = m[2].trim();
+            const wt = m[3].trim();
+      
+            for (let i = 0; i < count; i++) {
+              sets.push({
+                reps,
+                wt: wt.toUpperCase() === "BW" ? null : wt
+              });
+            }
+      
+          });
+      
+          return {
+            name: k,
+            sets
+          };
+      
         });
 
       const session = { date, workout: s.workout, exercises };
