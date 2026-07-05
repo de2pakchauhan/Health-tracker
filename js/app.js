@@ -1,5 +1,8 @@
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxunxRA-KKBYblKoCH02drul3Lrw0ngmq5uY-w2HXotwdBfqKs1TDJhc5rD7NiwhKX86Q/exec";
+// ── CONFIGURATION ──
+const SHEET_URL = "YOUR_PRIVATE_SCRIPT_URL";   // <-- Replace with your new private Apps Script URL
+const CLIENT_ID = "401103632011-qgjvt6fko9knb651oe6b89rrs12fgobk.apps.googleusercontent.com"; // <-- Replace with your OAuth Client ID
 const TARGET_KEY = "health-target-v1";
+
 const C = {
   bg: "#080810", surface: "#11111f", card: "#181828", border: "#1e1e35", muted: "#2a2a45",
   dim: "#6b6b8a", text: "#e2e2f0", white: "#ffffff", indigo: "#818cf8", green: "#34d399",
@@ -8,9 +11,82 @@ const C = {
 
 let fitData = [], strData = [], target = 70, currentChart = "weight";
 
-// ── HELPERS ──
+// ── OAUTH2 STATE ──
+let accessToken = null;
+let tokenClient = null;
 
-// Convert all object keys to lowercase
+// ── AUTH FUNCTIONS ──
+
+function initOAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/script.external_request",
+    callback: (response) => {
+      if (response.access_token) {
+        accessToken = response.access_token;
+        localStorage.setItem("oauth_token", accessToken);
+        updateAuthUI(true);
+        console.log("✅ OAuth token obtained");
+      } else {
+        console.error("❌ OAuth error:", response.error);
+        updateAuthUI(false);
+      }
+    },
+  });
+}
+
+function signIn() {
+  tokenClient.requestAccessToken({ prompt: "consent" });
+}
+
+function signOut() {
+  if (accessToken) {
+    google.accounts.oauth2.revoke(accessToken, () => {
+      accessToken = null;
+      localStorage.removeItem("oauth_token");
+      updateAuthUI(false);
+      console.log("✅ Signed out");
+    });
+  } else {
+    localStorage.removeItem("oauth_token");
+    updateAuthUI(false);
+  }
+}
+
+function getAccessToken() {
+  const token = localStorage.getItem("oauth_token");
+  if (token) {
+    accessToken = token;
+    return token;
+  }
+  return null;
+}
+
+function isAuthenticated() {
+  return !!getAccessToken();
+}
+
+function updateAuthUI(isAuthenticated) {
+  const dot = document.getElementById("dot");
+  const lbl = document.getElementById("dot-label");
+  const btnSignin = document.getElementById("btn-signin");
+  const btnSignout = document.getElementById("btn-signout");
+
+  if (isAuthenticated) {
+    dot.className = "dot ok";
+    lbl.textContent = "Authenticated ✅";
+    if (btnSignin) btnSignin.style.display = "none";
+    if (btnSignout) btnSignout.style.display = "inline-block";
+  } else {
+    dot.className = "dot err";
+    lbl.textContent = "Sign in required";
+    if (btnSignin) btnSignin.style.display = "inline-block";
+    if (btnSignout) btnSignout.style.display = "none";
+  }
+}
+
+// ── HELPERS ── (unchanged)
+
 function lowerKeys(obj) {
   return Object.keys(obj).reduce((acc, key) => {
     acc[key.toLowerCase()] = obj[key];
@@ -49,8 +125,9 @@ function isoToDate(s) {
   return str;
 }
 
+// ── DATA PARSING (unchanged) ──
+
 function parseRow(r) {
-  // r keys are already lowercased
   function parseSleep(v) {
     if (!v) return null;
     const s = String(v);
@@ -87,53 +164,31 @@ function parseRow(r) {
 
 function parseStrRows(rows) {
   console.log("parseStrRows received", rows.length, "rows");
-
   const sessions = {};
-
   rows.forEach(r => {
     const date = isoToDate(r.date) || String(r.date || "");
     const workout = String(r.workout || "").trim();
     const key = date + "|" + workout;
-
-    if (!sessions[key]) {
-      sessions[key] = {
-        date,
-        workout,
-        exercises: {}
-      };
-    }
-
+    if (!sessions[key]) sessions[key] = { date, workout, exercises: {} };
     const exName = String(r.exercise || "").trim();
-
-    if (!sessions[key].exercises[exName]) {
-      sessions[key].exercises[exName] = [];
-    }
-
-    // "Set" column stores NUMBER OF SETS
+    if (!sessions[key].exercises[exName]) sessions[key].exercises[exName] = [];
     const setCount = parseInt(r.set) || 1;
-
     for (let i = 0; i < setCount; i++) {
       sessions[key].exercises[exName].push({
         reps: r.reps ? String(r.reps).trim() : "",
-        wt:
-          r.weight &&
-          String(r.weight).trim().toUpperCase() !== "BW"
-            ? String(r.weight).trim()
-            : null
+        wt: r.weight && String(r.weight).trim().toUpperCase() !== "BW" ? String(r.weight).trim() : null
       });
     }
   });
-
   return Object.values(sessions).map(s => ({
     date: s.date,
     workout: s.workout,
-    exercises: Object.entries(s.exercises).map(([name, sets]) => ({
-      name,
-      sets
-    }))
+    exercises: Object.entries(s.exercises).map(([name, sets]) => ({ name, sets }))
   }));
 }
-// ── FETCH FROM SHEETS ──
+
+// ── UI INDICATORS ──
+
 function setDot(state) {
   const dot = document.getElementById("dot");
   const lbl = document.getElementById("dot-label");
@@ -147,21 +202,27 @@ function setSyncMsg(msg, isErr) {
   el.className = "sync-msg" + (isErr ? " err" : "");
 }
 
+// ── FETCH FROM SHEETS (with OAuth token) ──
+
 async function loadFromSheets() {
   setSyncMsg("Loading from Google Sheets...");
   try {
+    const token = getAccessToken();
+    if (!token) {
+      setSyncMsg("Please sign in with Google", true);
+      setDot("err");
+      return;
+    }
+
     const [fr, sr] = await Promise.all([
-      fetch(SHEET_URL + "?sheet=fitness")
-        .then(r => {
-          if (!r.ok) throw new Error("Fitness GET " + r.status);
-          return r.json();
-        }),
-      fetch(SHEET_URL + "?sheet=strength")
-        .then(r => {
-          if (!r.ok) throw new Error("Strength GET " + r.status);
-          return r.json();
-        }),
+      fetch(SHEET_URL + "?sheet=fitness", {
+        headers: { "Authorization": "Bearer " + token }
+      }).then(r => { if (!r.ok) throw new Error("Fitness GET " + r.status); return r.json(); }),
+      fetch(SHEET_URL + "?sheet=strength", {
+        headers: { "Authorization": "Bearer " + token }
+      }).then(r => { if (!r.ok) throw new Error("Strength GET " + r.status); return r.json(); })
     ]);
+
     if (fr.status === "ok" && fr.data && fr.data.length > 0) {
       fitData = fr.data.map(row => parseRow(lowerKeys(row))).filter(r => r.date);
       setDot("ok");
@@ -179,348 +240,50 @@ async function loadFromSheets() {
     setDot("err");
     setSyncMsg("Cannot reach Sheets: " + e.message, true);
     document.getElementById("hdr-sub").textContent = "Sheets unreachable";
+    if (e.message.includes("401") || e.message.includes("403")) {
+      // Token might be invalid – clear it and ask to sign in again
+      localStorage.removeItem("oauth_token");
+      updateAuthUI(false);
+      setSyncMsg("Authentication expired – please sign in again", true);
+    }
   }
 }
 
 async function appendToSheet(sheet, row) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("Not authenticated – please sign in.");
+  }
 
   const response = await fetch(SHEET_URL, {
     method: "POST",
     headers: {
+      "Authorization": "Bearer " + token,
       "Content-Type": "text/plain;charset=utf-8"
     },
-    body: JSON.stringify({
-      sheet,
-      action: "append",
-      row
-    })
+    body: JSON.stringify({ sheet, action: "append", row })
   });
 
   const text = await response.text();
-
   console.log("Sheet:", sheet);
   console.log("Status:", response.status);
   console.log("Response:", text);
 
-  if (!response.ok) {
-    throw new Error("HTTP " + response.status);
+  if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem("oauth_token");
+    accessToken = null;
+    updateAuthUI(false);
+    throw new Error("Authentication expired – please sign in again.");
   }
-
+  if (!response.ok) throw new Error("HTTP " + response.status);
   return text;
 }
 
-// ── RENDER FUNCTIONS ──
-
-function renderAll() {
-  if (!fitData.length) return;
-  const first = fitData[0];
-  const latest = fitData[fitData.length - 1];
-  const lastW = [...fitData].reverse().find(d => d.weight != null);
-  document.getElementById("hdr-sub").textContent = fitData.length + " days | " + first.date + " to " + latest.date;
-  renderOverview(first, latest, lastW);
-  renderWeekly();
-  renderRuns();
-  renderProjection(lastW);
-  renderNutrition();
-  renderStrength();
-  renderChart(currentChart);
-  renderLog();
-}
-
-function renderOverview(first, latest, lastW) {
-  const lkw = lastW ? lastW.weight : null;
-  const lkd = lastW ? lastW.date : null;
-  const daysAgo = lastW ? fitData.length - 1 - fitData.indexOf(lastW) : 0;
-  const lost = lkw && first.weight ? (first.weight - lkw).toFixed(2) : "0";
-  const rhrD = latest.rhr - first.rhr;
-  const avg7 = Math.round(fitData.slice(-7).reduce((s, d) => s + (d.steps || 0), 0) / 7);
-  const sc = recScore(latest);
-  const col = sc >= 75 ? C.green : sc >= 50 ? C.amber : C.red;
-  const slabel = sc >= 75 ? "Ready" : sc >= 50 ? "Moderate" : "Rest";
-
-  document.getElementById("stat-cards").innerHTML = [
-    { label: "Weight Lost", v: "-" + lost + " kg", sub: first.weight + " to " + lkw, col: C.green },
-    { label: "Last Weighed", v: (lkw || "--") + " kg", sub: (lkd || "--") + (daysAgo > 0 ? " (" + daysAgo + "d ago)" : ""), col: C.blue },
-    { label: "Resting HR", v: (latest.rhr || "--") + " bpm", sub: (rhrD < 0 ? "down " : "up ") + Math.abs(rhrD) + " from start", col: C.red },
-    { label: "7d Avg Steps", v: avg7.toLocaleString(), sub: "last 7 days", col: C.orange },
-  ].map(({ label, v, sub, col }) => `
-    <div class="stat-card">
-      <div class="stat-label">${label}</div>
-      <div class="stat-val" style="color:${col}">${v}</div>
-      <div class="stat-sub">${sub}</div>
-    </div>
-  `).join("");
-
-  const r = 28, cx = 36, cy = 36, sw = 6, circ = 2 * Math.PI * r, dash = (sc / 100) * circ;
-  document.getElementById("recovery-card").innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="display:flex;align-items:center;gap:10px">
-        <svg width="72" height="72">
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${C.muted}" stroke-width="${sw}"/>
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}"
-            stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${circ / 4}" stroke-linecap="round"/>
-          <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="${col}">${sc}</text>
-        </svg>
-        <div>
-          <div style="font-size:16px;font-weight:700;color:${col}">${slabel}</div>
-          <div style="font-size:11px;color:${C.dim}">Recovery</div>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:11px;color:${C.dim};margin-bottom:6px">${latest.date}</div>
-        ${[["Sleep", latest.sleep || "--"], ["RHR", (latest.rhr || "--") + " bpm"], ["HRV", latest.hrv ? latest.hrv + " ms" : "--"]].map(([l, v]) => `
-          <div style="display:flex;justify-content:flex-end;gap:12px;padding:3px 0">
-            <span style="font-size:13px;color:${C.dim}">${l}</span>
-            <span style="font-size:14px;font-weight:600">${v}</span>
-          </div>`).join("")}
-                </div>
-    </div>`;
-
-  document.getElementById("latest-card").innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:${C.teal};margin-bottom:10px">Latest ${latest.date}</div>
-    <div class="grid2" style="margin-bottom:10px">
-      <div style="background:${C.surface};border-radius:10px;padding:10px 12px">
-        <div style="font-size:10px;color:${C.dim};margin-bottom:2px">CALORIES</div>
-        <div style="font-size:18px;font-weight:800;color:${C.amber}">${latest.calMin && latest.calMax ? latest.calMin + "-" + latest.calMax : "--"}</div>
-        <div style="font-size:10px;color:${C.dim}">kcal</div>
-      </div>
-      <div style="background:${C.surface};border-radius:10px;padding:10px 12px">
-        <div style="font-size:10px;color:${C.dim};margin-bottom:2px">PROTEIN</div>
-        <div style="font-size:18px;font-weight:800;color:${C.green}">${latest.protMin && latest.protMax ? latest.protMin + "-" + latest.protMax + "g" : "--"}</div>
-        <div style="font-size:10px;color:${C.dim}">grams</div>
-      </div>
-    </div>
-    ${[["Cardio", latest.cardio || "--"], ["Steps", latest.steps ? latest.steps.toLocaleString() : "--"], ["Distance", latest.dist ? latest.dist + " km" : "--"], ["Move", latest.move ? latest.move + " kcal" : "--"], ["Total Burn", latest.burn ? latest.burn + " kcal" : "--"]].map(([l, v]) => `
-      <div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("")}`;
-}
-
-function renderWeekly() {
-  const weeks = [];
-  for (let i = 0; i < fitData.length; i += 7) {
-    const c = fitData.slice(i, i + 7);
-    if (c.length < 3) continue;
-    const wt = c.filter(d => d.weight), sl = c.map(d => sleepH(d.sleep)).filter(Boolean), pr = c.filter(d => d.protMin && d.protMax);
-    weeks.push({
-      label: c[0].date + " to " + c[c.length - 1].date,
-      avgWt: wt.length ? (wt.reduce((s, d) => s + d.weight, 0) / wt.length).toFixed(2) : null,
-      avgRhr: c.filter(d => d.rhr).length ? Math.round(c.filter(d => d.rhr).reduce((s, d) => s + d.rhr, 0) / c.filter(d => d.rhr).length) : null,
-      totSteps: c.reduce((s, d) => s + (d.steps || 0), 0),
-      avgSl: sl.length ? (sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1) : null,
-      avgProt: pr.length ? Math.round(pr.reduce((s, d) => s + (d.protMin + d.protMax) / 2, 0) / pr.length) : null,
-      count: c.length,
-    });
-  }
-  document.getElementById("sub-home-weekly").innerHTML = weeks.reverse().map(w => `
-    <div class="card">
-      <div style="font-size:12px;font-weight:700;color:${C.indigo};margin-bottom:8px">${w.label}</div>
-      <div class="grid3">
-        ${[["Avg Wt", w.avgWt ? w.avgWt + "kg" : "--", C.blue], ["Avg RHR", w.avgRhr ? String(w.avgRhr) : "--", C.red], ["Avg Sleep", w.avgSl ? w.avgSl + "h" : "--", C.purple], ["Steps", w.totSteps.toLocaleString(), C.green], ["Avg Prot", w.avgProt ? w.avgProt + "g" : "--", C.amber], ["Days", w.count + "/7", C.dim]].map(([l, v, c]) => `
-          <div><div style="font-size:10px;color:${C.dim}">${l}</div><div style="font-size:14px;font-weight:700;color:${c}">${v}</div></div>`).join("")}
-      </div>
-    </div>`).join("");
-}
-
-function renderRuns() {
-  const fiveKs = fitData.filter(d => d.run5k).map(d => {
-    const m = String(d.run5k).match(/(\d+):(\d+)/);
-    if (!m) return null;
-    const secs = parseInt(m[1]) * 60 + parseInt(m[2]);
-    return { date: d.date, secs, label: String(parseInt(m[1])).padStart(2, "0") + ":" + String(parseInt(m[2])).padStart(2, "0") };
-  }).filter(Boolean);
-  const best = fiveKs.length ? fiveKs.reduce((b, c) => c.secs < b.secs ? c : b) : null;
-  const allRuns = fitData.filter(d => d.cardio && d.steps > 2000);
-
-  document.getElementById("sub-home-runs").innerHTML = `
-    <div class="card" style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:700;color:${C.purple};margin-bottom:10px">5K Races</div>
-      ${fiveKs.length === 0 ? `<div style="font-size:13px;color:${C.dim}">No 5K times logged yet</div>` : ""}
-      ${fiveKs.map((r, i) => {
-        const prev = fiveKs[i - 1], diff = prev ? prev.secs - r.secs : null;
-        return `<div class="row">
-          <span class="lbl">${r.date}</span>
-          <span style="display:flex;align-items:center;gap:8px">
-            <span class="val" style="color:${r === best ? C.amber : C.text}">${r.label}${r === best ? " PB" : ""}</span>
-            ${diff !== null ? `<span style="font-size:11px;font-weight:700;color:${diff > 0 ? C.green : C.red}">${diff > 0 ? "-" + diff + "s" : "+" + Math.abs(diff) + "s"}</span>` : ""}
-          </span></div>`;
-      }).join("")}
-      ${fiveKs.length > 1 ? `<div style="margin-top:8px;background:${C.surface};border-radius:8px;padding:8px 12px;font-size:12px;color:${C.dim}">Total off first: <span style="color:${C.green};font-weight:700">${fiveKs[0].secs - best.secs}s</span></div>` : ""}
-    </div>
-    <div class="card">
-      <div style="font-size:13px;font-weight:700;color:${C.blue};margin-bottom:10px">All Cardio Sessions</div>
-      ${allRuns.map(r => `<div class="row">
-        <span class="lbl">${r.date}</span>
-        <span style="display:flex;align-items:center;gap:8px">
-          <span class="val">${r.cardio}</span>
-          <span style="font-size:11px;color:${C.dim}">${r.steps ? r.steps.toLocaleString() : ""} steps</span>
-        </span></div>`).join("")}
-    </div>`;
-}
-
-function renderProjection(lastW) {
-  const lkw = lastW ? lastW.weight : null;
-  const lkd = lastW ? lastW.date : null;
-  document.getElementById("target-display").textContent = target.toFixed(1) + " kg";
-  document.getElementById("still-to-lose").textContent = "Still to lose: " + Math.max(0, (lkw || 0) - target).toFixed(1) + " kg";
-
-  if (!lkw) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No weight data available.</div>`; return; }
-
-  const ach = fitData.find(d => d.weight != null && d.weight <= target);
-  if (ach) {
-    document.getElementById("proj-result").innerHTML = `<div class="card" style="text-align:center">
-      <div style="font-size:11px;color:${C.green};text-transform:uppercase;letter-spacing:.4px">Target Achieved</div>
-      <div style="font-size:28px;font-weight:800;color:${C.green};margin-top:4px">${ach.date}</div>
-      <div style="font-size:13px;color:${C.dim};margin-top:4px">You hit ${ach.weight} kg on this date</div>
-      <div style="font-size:11px;color:${C.dim};margin-top:8px">Lower your target to set a new goal</div>
-    </div>`; return;
-  }
-
-  const r = fitData.filter(d => d.weight != null).slice(-14);
-  if (r.length < 7) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Need more data for projection.</div>`; return; }
-
-  const n = r.length, sx = r.reduce((s, _, i) => s + i, 0), sy = r.reduce((s, d) => s + d.weight, 0);
-  const sxy = r.reduce((s, d, i) => s + i * d.weight, 0), sx2 = r.reduce((s, _, i) => s + i * i, 0);
-  const slope = (n * sxy - sx * sy) / (n * sx2 - sx * sx), ic = (sy - slope * sx) / n;
-  if (slope >= 0) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Weight trend is not decreasing. Keep going!</div>`; return; }
-  const days = Math.ceil((target - ic) / slope - (n - 1));
-  if (days <= 0 || days > 365) { document.getElementById("proj-result").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">Set a target below ${lkw} kg.</div>`; return; }
-  const dt = new Date(); dt.setDate(dt.getDate() + days);
-  const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const rate = Math.abs(slope * 7).toFixed(2);
-
-  document.getElementById("proj-result").innerHTML = `<div class="card">
-    <div style="text-align:center;margin-bottom:14px">
-      <div style="font-size:11px;color:${C.dim};text-transform:uppercase;letter-spacing:.4px">Projected arrival</div>
-      <div style="font-size:28px;font-weight:800;color:${C.green};margin-top:4px">${dateStr}</div>
-      <div style="font-size:13px;color:${C.dim};margin-top:4px">${days} days away</div>
-    </div>
-    <div style="background:${C.surface};border-radius:10px;padding:10px 14px">
-      ${[["Rate", "-" + rate + " kg/wk", C.green], ["Last weighed", lkw + " kg (" + lkd + ")", C.text], ["Target", target.toFixed(1) + " kg", C.blue]].map(([l, v, c]) => `
-        <div class="row"><span class="lbl">${l}</span><span class="val" style="color:${c}">${v}</span></div>`).join("")}
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:${C.dim}">Based on last 14 weighed days.</div>
-  </div>`;
-}
-
-function renderNutrition() {
-  const cals = fitData.filter(d => d.calMin), prots = fitData.filter(d => d.protMin);
-  const avgCalMin = cals.length ? Math.round(cals.reduce((s, d) => s + d.calMin, 0) / cals.length) : 0;
-  const avgCalMax = cals.length ? Math.round(cals.reduce((s, d) => s + d.calMax, 0) / cals.length) : 0;
-  const avgProtMin = prots.length ? Math.round(prots.reduce((s, d) => s + d.protMin, 0) / prots.length) : 0;
-  const avgProtMax = prots.length ? Math.round(prots.reduce((s, d) => s + d.protMax, 0) / prots.length) : 0;
-  document.getElementById("nutr-sub").textContent = fitData.length + " days tracked";
-  document.getElementById("nutr-avgs").innerHTML = `
-    <div class="stat-card"><div class="stat-label">Avg Calories</div><div class="stat-val" style="color:${C.amber}">${avgCalMin}-${avgCalMax}</div><div class="stat-sub">kcal/day</div></div>
-    <div class="stat-card"><div class="stat-label">Avg Protein</div><div class="stat-val" style="color:${C.green}">${avgProtMin}-${avgProtMax}g</div><div class="stat-sub">grams/day</div></div>`;
-  document.getElementById("nutr-list").innerHTML = [...fitData].reverse().map(d => `
-    <div class="card" style="padding:10px 14px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:700;color:${C.white}">${d.date}</div>
-        ${d.weight ? `<div style="font-size:11px;color:${C.blue};font-weight:600">${d.weight} kg</div>` : ""}
-      </div>
-      <div class="grid2">
-        <div style="background:${C.surface};border-radius:8px;padding:8px 10px">
-          <div style="font-size:10px;color:${C.dim};margin-bottom:2px">CALORIES</div>
-          <div style="font-size:15px;font-weight:700;color:${C.amber}">${d.calMin && d.calMax ? d.calMin + "-" + d.calMax : "--"}</div>
-        </div>
-        <div style="background:${C.surface};border-radius:8px;padding:8px 10px">
-          <div style="font-size:10px;color:${C.dim};margin-bottom:2px">PROTEIN</div>
-          <div style="font-size:15px;font-weight:700;color:${C.green}">${d.protMin && d.protMax ? d.protMin + "-" + d.protMax + "g" : "--"}</div>
-        </div>
-      </div>
-    </div>`).join("");
-}
-
-function renderStrength() {
-  document.getElementById("str-sub").textContent = strData.length + " sessions logged";
-  if (!strData.length) { document.getElementById("str-list").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No sessions yet.</div>`; return; }
-  document.getElementById("str-list").innerHTML = [...strData].reverse().map(s => `
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid ${C.border}">
-        <div>
-          <div style="font-size:14px;font-weight:800;color:${C.white}">${s.date}</div>
-          <div style="font-size:11px;color:${C.indigo};font-weight:600;margin-top:2px">${s.workout}</div>
-        </div>
-        <div style="font-size:11px;color:${C.dim}">${s.exercises.length} exercises</div>
-      </div>
-      ${s.exercises.map((ex, j) => `
-        <div style="margin-bottom:${j < s.exercises.length - 1 ? 12 : 0}px;padding-bottom:${j < s.exercises.length - 1 ? 12 : 0}px;border-bottom:${j < s.exercises.length - 1 ? "1px solid " + C.muted : "none"}">
-          <div style="font-size:12px;font-weight:700;color:${C.purple};margin-bottom:6px">${ex.name}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${ex.sets.map((set, k) => `
-              <div style="background:${C.surface};border-radius:8px;padding:6px 10px;font-size:11px">
-                <span style="color:${C.dim}">S${k + 1} </span>
-                <span style="color:${C.white};font-weight:600">${set.reps}</span>
-                ${set.wt ? `<span style="color:${C.amber}"> @ ${set.wt}</span>` : ""}
-              </div>`).join("")}
-          </div>
-        </div>`).join("")}
-    </div>`).join("");
-}
-
-function setChart(key) {
-  currentChart = key;
-  document.querySelectorAll("#chart-chips .chip").forEach(b => b.classList.remove("active"));
-  event.target.classList.add("active");
-  renderChart(key);
-}
-
-function renderChart(key) {
-  const COLORS = { weight: C.blue, rhr: C.red, steps: C.green, move: C.orange, burn: C.purple, hrv: C.teal };
-  const color = COLORS[key] || C.blue;
-  const pts = fitData.filter(d => d[key] != null);
-  const vals = pts.map(d => d[key]);
-  if (!vals.length) { document.getElementById("chart-container").innerHTML = `<div style="color:${C.dim};font-size:13px;padding:16px 0">No data yet</div>`; return; }
-  const mn = Math.min(...vals), mx = Math.max(...vals), avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
-  document.getElementById("chart-stats").innerHTML = [["Min", mn, C.red], ["Avg", avg, C.amber], ["Max", mx, C.green]].map(([l, v, c]) => `
-    <div class="card" style="text-align:center;padding:10px 6px;margin-bottom:0">
-      <div style="font-size:16px;font-weight:700;color:${c}">${typeof v === "number" ? v % 1 ? v.toFixed(1) : v : v}</div>
-      <div style="font-size:10px;color:${C.dim}">${l}</div>
-    </div>`).join("");
-  const W = 320, H = 130, PX = 10, PY = 14, rng = mx - mn || 1;
-  const x = i => PX + (i / (pts.length - 1)) * (W - PX * 2);
-  const y = v => PY + (H - PY * 2) - ((v - mn) / rng) * (H - PY * 2);
-  const line = pts.map((r, i) => x(i) + "," + y(r[key])).join(" ");
-  const fill = x(0) + "," + H + " " + line + " " + x(pts.length - 1) + "," + H;
-  const ticks = [0, Math.floor(pts.length / 2), pts.length - 1];
-  document.getElementById("chart-container").innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px">${key.charAt(0).toUpperCase() + key.slice(1)} all time</div>
-    <div style="overflow-x:auto">
-      <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
-        <defs>
-          <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
-            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        <polygon points="${fill}" fill="url(#cg)"/>
-                <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
-        ${ticks.map(i => `
-          <circle cx="${x(i)}" cy="${y(pts[i][key])}" r="3" fill="${color}"/>
-          <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="${C.dim}">${pts[i].date}</text>
-          <text x="${x(i)}" y="${Math.max(12, y(pts[i][key]) - 5)}" text-anchor="middle" font-size="9" fill="${color}">${pts[i][key]}</text>`).join("")}
-      </svg>
-    </div>`;
-}
-
-function renderLog() {
-  document.getElementById("log-list").innerHTML = [...fitData].reverse().map(r => `
-    <div class="card" style="margin-bottom:8px;padding:12px 14px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:700;color:${C.white}">${r.date}</div>
-        <div style="display:flex;gap:6px">
-          ${r.weight ? `<span style="background:${C.blue}22;color:${C.blue};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.weight} kg</span>` : ""}
-          ${r.rhr ? `<span style="background:${C.red}22;color:${C.red};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${r.rhr} bpm</span>` : ""}
-        </div>
-      </div>
-      <div class="grid2">
-        ${[["Sleep", r.sleep || "--"], ["Cal", r.calMin && r.calMax ? r.calMin + "-" + r.calMax : "--"], ["Prot", r.protMin && r.protMax ? r.protMin + "-" + r.protMax + "g" : "--"], ["Steps", r.steps ? r.steps.toLocaleString() : "--"], ["Cardio", r.cardio || "--"], ["HRV", r.hrv ? r.hrv + " ms" : "--"]].map(([l, v]) => `
-          <div style="font-size:11px;padding:2px 0;display:flex;gap:4px">
-            <span style="color:${C.dim};min-width:38px">${l}</span>
-            <span style="color:${C.text}">${v}</span>
-          </div>`).join("")}
-      </div>
-    </div>`).join("");
-}
+// ── RENDER FUNCTIONS (unchanged) ──
+// ... (all your renderAll, renderOverview, renderWeekly, renderRuns, renderProjection,
+// renderNutrition, renderStrength, setChart, renderChart, renderLog are exactly the same.
+// I'm not duplicating them here to keep the answer readable.
+// Just copy them from your existing app.js – they don't change.
 
 // ── ADD DATA ──
 
@@ -531,6 +294,12 @@ function showAddMsg(msg, isOk) {
 }
 
 async function parseAndSave() {
+  // Check authentication first
+  if (!isAuthenticated()) {
+    showAddMsg("Please sign in with Google first", false);
+    return;
+  }
+
   const input = document.getElementById("json-input").value.trim();
   if (!input) { showAddMsg("Paste your JSON first", false); return; }
   try {
@@ -584,47 +353,22 @@ async function parseAndSave() {
       if (!s.workout) throw new Error("strength.workout is required");
       const date = isoToDate(s.date);
 
-      // Parse all keys except "workout" and "date" as exercises
       const exercises = Object.entries(s)
         .filter(([k]) => k !== "workout" && k !== "date")
         .map(([k, v]) => {
-      
-          const rows = String(v)
-            .split(";")
-            .map(x => x.trim())
-            .filter(Boolean);
-      
+          const rows = String(v).split(";").map(x => x.trim()).filter(Boolean);
           const sets = [];
-      
           rows.forEach(row => {
-      
-            // Example:
-            // 3x10@8kg
-            // 1x15@6kg
-            // 2x30s@BW
-      
             const m = row.match(/^(\d+)\s*x\s*([^@]+)\s*@\s*(.+)$/i);
-      
             if (!m) return;
-      
             const count = parseInt(m[1]);
             const reps = m[2].trim();
             const wt = m[3].trim();
-      
             for (let i = 0; i < count; i++) {
-              sets.push({
-                reps,
-                wt: wt.toUpperCase() === "BW" ? null : wt
-              });
+              sets.push({ reps, wt: wt.toUpperCase() === "BW" ? null : wt });
             }
-      
           });
-      
-          return {
-            name: k,
-            sets
-          };
-      
+          return { name: k, sets };
         });
 
       const session = { date, workout: s.workout, exercises };
@@ -632,32 +376,16 @@ async function parseAndSave() {
       if (si >= 0) strData[si] = session;
       else strData.push(session);
 
-      // Append each set to the strength sheet
-      // Save compactly (Set column = number of identical sets)
       for (const ex of exercises) {
-      
         const groups = [];
-      
         ex.sets.forEach(set => {
-      
           const last = groups[groups.length - 1];
-      
-          if (
-            last &&
-            last.reps === set.reps &&
-            last.wt === set.wt
-          ) {
+          if (last && last.reps === set.reps && last.wt === set.wt) {
             last.count++;
           } else {
-            groups.push({
-              count: 1,
-              reps: set.reps,
-              wt: set.wt
-            });
+            groups.push({ count: 1, reps: set.reps, wt: set.wt });
           }
-      
         });
-      
         for (const g of groups) {
           await appendToSheet("strength", [
             date,
@@ -670,13 +398,11 @@ async function parseAndSave() {
             ""
           ]);
         }
-      
       }
       savedDates.push(date);
     }
 
     if (savedDates.length === 0) throw new Error("No fitness or strength data provided");
-
     document.getElementById("json-input").value = "";
     showAddMsg("Saved " + savedDates.join(", ") + " and synced to Sheets", true);
     setTimeout(() => showAddMsg(null), 4000);
@@ -695,7 +421,7 @@ function bumpTarget(d) {
   renderProjection(lastW || null);
 }
 
-// ── NAV & SUBS ──
+// ── NAV & SUBS (unchanged) ──
 
 function showTab(id, btn) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
@@ -705,19 +431,17 @@ function showTab(id, btn) {
 }
 
 function showSub(page, sub) {
-  document.querySelectorAll("#sub-home-overview,#sub-home-weekly,#sub-home-runs,#sub-home-projection").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll("#sub-home-overview,#sub-home-weekly,#sub-home-runs,#sub-home-projection")
+    .forEach(el => el.classList.remove("active"));
   document.querySelectorAll("#home-chips .chip").forEach(b => b.classList.remove("active"));
   document.getElementById("sub-home-" + sub).classList.add("active");
   event.target.classList.add("active");
 }
 
-
-
-// ---------- Example JSON Chips ----------
+// ── EXAMPLE JSONS (unchanged) ──
 
 const EXAMPLES = {
-
-fitness: `{
+  fitness: `{
   "fitness": {
     "date":"2026-07-04",
     "weight":72.7,
@@ -736,8 +460,7 @@ fitness: `{
     "notes":"Good recovery"
   }
 }`,
-
-strength: `{
+  strength: `{
   "strength": {
     "date":"2026-07-04",
     "workout":"Push A",
@@ -748,8 +471,7 @@ strength: `{
     "Plank":"1x30s@BW;1x16s@BW"
   }
 }`,
-
-both: `{
+  both: `{
   "fitness":{
     "date":"2026-07-04",
     "weight":72.7,
@@ -779,28 +501,32 @@ both: `{
 };
 
 function showExample(type, btn) {
-
-    document.querySelectorAll("#example-chips .chip")
-        .forEach(c => c.classList.remove("active"));
-
-    if (btn) btn.classList.add("active");
-
-    document.getElementById("example-json").textContent = EXAMPLES[type];
-    document.getElementById("json-input").value = EXAMPLES[type];
+  document.querySelectorAll("#example-chips .chip").forEach(c => c.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  document.getElementById("example-json").textContent = EXAMPLES[type];
+  document.getElementById("json-input").value = EXAMPLES[type];
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    showExample("fitness");
-});
-
 // ── INIT ──
+
+// Load saved target
 const saved = localStorage.getItem(TARGET_KEY);
 if (saved) target = parseFloat(saved);
 
-document.getElementById("example-json").textContent =
-    EXAMPLES.fitness;
+// Set initial example (on DOM ready)
+document.addEventListener("DOMContentLoaded", function () {
+  showExample("fitness");
+  initOAuth();
+  if (getAccessToken()) {
+    updateAuthUI(true);
+    // Optionally load data immediately after auth
+    loadFromSheets();
+  } else {
+    updateAuthUI(false);
+    // Show a message to sign in
+    setSyncMsg("Please sign in with Google to load your data", true);
+  }
+});
 
-document.getElementById("json-input").value =
-    EXAMPLES.fitness;
-
-loadFromSheets();
+// Also load from sheets if already authenticated (if token exists)
+// The DOMContentLoaded already does it if token exists.
