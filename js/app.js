@@ -15,7 +15,7 @@ const C = {
 let fitData = [], strData = [], target = 70, currentChart = "weight";
 
 // ──────────────────────────────────────────────────────────
-//  OAUTH2 FUNCTIONS (new)
+//  OAUTH2 FUNCTIONS (unchanged)
 // ──────────────────────────────────────────────────────────
 
 let accessToken = null;
@@ -31,7 +31,6 @@ function initOAuth() {
         localStorage.setItem("oauth_token", accessToken);
         updateAuthUI(true);
         console.log("✅ OAuth token obtained");
-        // Reload data now that we are authenticated
         loadFromSheets();
       } else {
         console.error("❌ OAuth error:", response.error);
@@ -52,7 +51,6 @@ function signOut() {
       localStorage.removeItem("oauth_token");
       updateAuthUI(false);
       console.log("✅ Signed out");
-      // Clear displayed data
       fitData = [];
       strData = [];
       renderAll();
@@ -220,7 +218,8 @@ function setSyncMsg(msg, isErr) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  SHEET COMMUNICATION (modified for OAuth2)
+//  SHEET COMMUNICATION – UPDATED (No Authorization header)
+//  Token sent as query param for GET and inside body for POST
 // ──────────────────────────────────────────────────────────
 
 async function loadFromSheets() {
@@ -233,13 +232,13 @@ async function loadFromSheets() {
       return;
     }
 
+    // Append token as query parameter to avoid preflight
+    const fitnessUrl = SHEET_URL + "?sheet=fitness&token=" + encodeURIComponent(token);
+    const strengthUrl = SHEET_URL + "?sheet=strength&token=" + encodeURIComponent(token);
+
     const [fr, sr] = await Promise.all([
-      fetch(SHEET_URL + "?sheet=fitness", {
-        headers: { "Authorization": "Bearer " + token }
-      }).then(r => { if (!r.ok) throw new Error("Fitness GET " + r.status); return r.json(); }),
-      fetch(SHEET_URL + "?sheet=strength", {
-        headers: { "Authorization": "Bearer " + token }
-      }).then(r => { if (!r.ok) throw new Error("Strength GET " + r.status); return r.json(); })
+      fetch(fitnessUrl).then(r => { if (!r.ok) throw new Error("Fitness GET " + r.status); return r.json(); }),
+      fetch(strengthUrl).then(r => { if (!r.ok) throw new Error("Strength GET " + r.status); return r.json(); })
     ]);
 
     if (fr.status === "ok" && fr.data && fr.data.length > 0) {
@@ -259,7 +258,7 @@ async function loadFromSheets() {
     setDot("err");
     setSyncMsg("Cannot reach Sheets: " + e.message, true);
     document.getElementById("hdr-sub").textContent = "Sheets unreachable";
-    if (e.message.includes("401") || e.message.includes("403")) {
+    if (e.message.includes("401") || e.message.includes("403") || e.message.includes("Invalid token")) {
       localStorage.removeItem("oauth_token");
       updateAuthUI(false);
       setSyncMsg("Authentication expired – please sign in again", true);
@@ -273,13 +272,20 @@ async function appendToSheet(sheet, row) {
     throw new Error("Not authenticated – please sign in.");
   }
 
+  // Send token inside the JSON body, not in Authorization header
+  const payload = {
+    sheet: sheet,
+    action: "append",
+    row: row,
+    token: token
+  };
+
   const response = await fetch(SHEET_URL, {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token,
-      "Content-Type": "text/plain;charset=utf-8"
+      "Content-Type": "text/plain;charset=utf-8"  // avoids preflight
     },
-    body: JSON.stringify({ sheet, action: "append", row })
+    body: JSON.stringify(payload)
   });
 
   const text = await response.text();
@@ -293,7 +299,17 @@ async function appendToSheet(sheet, row) {
     updateAuthUI(false);
     throw new Error("Authentication expired – please sign in again.");
   }
-  if (!response.ok) throw new Error("HTTP " + response.status);
+
+  // Parse response to check for server error
+  let result;
+  try {
+    result = JSON.parse(text);
+  } catch (_) {
+    throw new Error("Invalid response from server");
+  }
+  if (result.status !== "ok") {
+    throw new Error(result.message || "Unknown error");
+  }
   return text;
 }
 
