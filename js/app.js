@@ -2,72 +2,144 @@
    Health Log v2
    File : js/app.js
    Purpose : Application Bootstrap
-   =========================================================== */
+=========================================================== */
 
-import { Config } from "./core/config.js";
-import { State } from "./core/state.js";
 import { Router } from "./core/router.js";
+import { State } from "./core/state.js";
 import { Storage } from "./core/storage.js";
-import { Sync } from "./core/sync.js";
 
 import { DashboardPage } from "./pages/dashboard.js";
 import { NutritionPage } from "./pages/nutrition.js";
 import { StrengthPage } from "./pages/strength.js";
 import { ChartsPage } from "./pages/charts.js";
 import { HistoryPage } from "./pages/history.js";
-import { AddPage } from "./pages/add.js";
+import { AddEntryPage } from "./pages/add.js";
 
-const App = {
+class App {
 
-    async init() {
+    constructor() {
 
-        console.log(
-            `%c${Config.APP_NAME} v${Config.VERSION}`,
-            "color:#818CF8;font-weight:bold;font-size:14px;"
-        );
+        this.pages = [
 
-        try {
+            DashboardPage,
+            NutritionPage,
+            StrengthPage,
+            ChartsPage,
+            HistoryPage,
+            AddEntryPage
 
-            State.setLoading(true);
+        ];
 
-            await Storage.init();
+    }
 
-            await Sync.init();
+    /* ======================================================
+       Start Application
+    ====================================================== */
 
-            Router.init();
+    start() {
 
-            DashboardPage.init();
-            NutritionPage.init();
-            StrengthPage.init();
-            ChartsPage.init();
-            HistoryPage.init();
-            AddPage.init();
+        this.loadState();
 
-            Router.go("home");
+        this.initializePages();
 
-            State.setLoading(false);
+        this.initializeSidebar();
 
-            console.log("Application Ready");
+        this.initializeTheme();
 
-        }
-        catch (error) {
+        Router.start();
 
-            console.error(error);
+    }
 
-            State.setLoading(false);
+    /* ======================================================
+       Load Saved Data
+    ====================================================== */
 
-            alert("Unable to start application.");
+    loadState() {
+
+        const savedData = Storage.load();
+
+        if (savedData) {
+
+            State.setData(savedData);
 
         }
 
     }
 
-};
+    /* ======================================================
+       Initialize Pages
+    ====================================================== */
 
-window.HealthLog = App;
+    initializePages() {
 
-document.addEventListener("DOMContentLoaded", () => {
+        this.pages.forEach(page => {
 
-    App.init();
+            if (typeof page.init === "function") {
 
-});
+                page.init();
+
+            }
+
+        });
+
+    }
+
+    /* ======================================================
+       Sidebar
+    ====================================================== */
+
+    initializeSidebar() {
+
+        const sidebar =
+
+            document.getElementById("sidebar");
+
+        const toggle =
+
+            document.getElementById("menu-toggle");
+
+        if (!sidebar || !toggle) return;
+
+        toggle.addEventListener("click", () => {
+
+            sidebar.classList.toggle("open");
+
+        });
+
+        document
+
+            .querySelectorAll("[data-route]")
+
+            .forEach(button => {
+
+                button.addEventListener("click", () => {
+
+                    sidebar.classList.remove("open");
+
+                });
+
+            });
+
+    }
+
+    /* ======================================================
+       Theme
+    ====================================================== */
+
+    initializeTheme() {
+
+        document.documentElement.setAttribute(
+
+            "data-theme",
+
+            State.settings.theme || "light"
+
+        );
+
+    }
+
+}
+
+const app = new App();
+
+app.start();
