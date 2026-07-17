@@ -1,231 +1,175 @@
 /* ===========================================================
    Health Log v2
    File : js/core/state.js
-   Purpose : Global Application State
+   Purpose : Central Reactive State Store
 =========================================================== */
 
-export const State = {
+import { Helpers } from "../utils/helpers.js";
 
-    app: {
+class Store {
 
-        initialized: false,
+    constructor() {
 
-        loading: false,
+        this.data = {
 
-        version: "2.0.0"
+            days: []
 
-    },
+        };
 
-    user: {
+        this.settings = {
 
-        signedIn: false,
+            targetCalories: 2200,
+            targetProtein: 130,
+            theme: "light"
 
-        name: "",
+        };
 
-        email: "",
-
-        picture: ""
-
-    },
-
-    settings: {
-
-        theme: "dark",
-
-        targetWeight: 70,
-
-        targetCalories: 1600,
-
-        targetProtein: 110,
-
-        distanceUnit: "km",
-
-        weightUnit: "kg"
-
-    },
-
-    data: {
-
-        days: []
-
-    },
-
-    ui: {
-
-        page: "home",
-
-        homeTab: "overview",
-
-        chart: "weight",
-
-        historyFilter: "all",
-
-        nutritionRange: 30,
-
-        search: ""
-
-    },
-
-    cache: {
-
-        analytics: null,
-
-        charts: {},
-
-        monthlySummary: {}
-
-    },
-
-    sync: {
-
-        status: "offline",
-
-        lastSync: null,
-
-        pendingUploads: 0
+        this.listeners = new Set();
 
     }
 
-};
+    /* ======================================================
+       Subscribe
+    ====================================================== */
 
+    subscribe(callback) {
 
-/* ===========================================================
-   Application
-=========================================================== */
+        this.listeners.add(callback);
 
-function setLoading(value){
+        return () => this.listeners.delete(callback);
 
-    State.app.loading = value;
+    }
+
+    /* ======================================================
+       Notify
+    ====================================================== */
+
+    notify() {
+
+        for (const listener of this.listeners) {
+
+            listener(this.getState());
+
+        }
+
+    }
+
+    /* ======================================================
+       Read State
+    ====================================================== */
+
+    getState() {
+
+        return {
+
+            data: Helpers.clone(this.data),
+
+            settings: Helpers.clone(this.settings)
+
+        };
+
+    }
+
+    /* ======================================================
+       Replace Data
+    ====================================================== */
+
+    setData(data) {
+
+        this.data = Helpers.clone(data);
+
+        this.notify();
+
+    }
+
+    /* ======================================================
+       Replace Settings
+    ====================================================== */
+
+    setSettings(settings) {
+
+        this.settings = {
+
+            ...this.settings,
+
+            ...settings
+
+        };
+
+        this.notify();
+
+    }
+
+    /* ======================================================
+       Add Day
+    ====================================================== */
+
+    addDay(day) {
+
+        this.data.days.push(
+
+            Helpers.clone(day)
+
+        );
+
+        this.notify();
+
+    }
+
+    /* ======================================================
+       Update Day
+    ====================================================== */
+
+    updateDay(date, updater) {
+
+        const day = this.data.days.find(
+
+            d => d.date === date
+
+        );
+
+        if (!day) return false;
+
+        updater(day);
+
+        this.notify();
+
+        return true;
+
+    }
+
+    /* ======================================================
+       Remove Day
+    ====================================================== */
+
+    removeDay(date) {
+
+        this.data.days = this.data.days.filter(
+
+            d => d.date !== date
+
+        );
+
+        this.notify();
+
+    }
+
+    /* ======================================================
+       Reset
+    ====================================================== */
+
+    reset() {
+
+        this.data = {
+
+            days: []
+
+        };
+
+        this.notify();
+
+    }
 
 }
 
-function setInitialized(value){
-
-    State.app.initialized = value;
-
-}
-
-
-/* ===========================================================
-   Data
-=========================================================== */
-
-function setDays(days){
-
-    State.data.days = days;
-
-}
-
-function addDay(day){
-
-    State.data.days.push(day);
-
-}
-
-function updateDay(index, day){
-
-    State.data.days[index] = day;
-
-}
-
-function getDays(){
-
-    return State.data.days;
-
-}
-
-
-/* ===========================================================
-   UI
-=========================================================== */
-
-function setPage(page){
-
-    State.ui.page = page;
-
-}
-
-function setHomeTab(tab){
-
-    State.ui.homeTab = tab;
-
-}
-
-function setChart(chart){
-
-    State.ui.chart = chart;
-
-}
-
-function setSearch(query){
-
-    State.ui.search = query;
-
-}
-
-
-/* ===========================================================
-   Sync
-=========================================================== */
-
-function setSyncStatus(status){
-
-    State.sync.status = status;
-
-}
-
-function setLastSync(date){
-
-    State.sync.lastSync = date;
-
-}
-
-
-/* ===========================================================
-   Cache
-=========================================================== */
-
-function clearCache(){
-
-    State.cache.analytics = null;
-
-    State.cache.charts = {};
-
-    State.cache.monthlySummary = {};
-
-}
-
-
-/* ===========================================================
-   Export
-=========================================================== */
-
-export const Store = {
-
-    setLoading,
-
-    setInitialized,
-
-    setDays,
-
-    addDay,
-
-    updateDay,
-
-    getDays,
-
-    setPage,
-
-    setHomeTab,
-
-    setChart,
-
-    setSearch,
-
-    setSyncStatus,
-
-    setLastSync,
-
-    clearCache
-
-};
+export const State = new Store();
