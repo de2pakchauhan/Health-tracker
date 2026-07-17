@@ -1,199 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
 <title>Health Log v2</title>
-<link rel="stylesheet" href="css/style.css">
-<script src="https://accounts.google.com/gsi/client"></script>
+
+<meta
+    name="theme-color"
+    content="#2563eb">
+
+<link
+    rel="stylesheet"
+    href="css/style.css">
+
 </head>
+
 <body>
 
-<header class="app-header">
-  <div>
-    <h1>Health Log</h1>
-    <p id="hdr-sub">Syncing...</p>
-  </div>
+<div id="app">
 
-  <div class="status">
-    <span id="dot" class="dot"></span>
-    <span id="dot-label">Connecting</span>
-  </div>
+    <!-- ===============================
+         Sidebar
+    ================================ -->
 
-  <div id="sync-msg"></div>
+    <aside id="sidebar">
 
-  <div class="auth-buttons">
-    <button id="btn-signin" onclick="signIn()">Sign in</button>
-    <button id="btn-signout" onclick="signOut()" style="display:none;">Sign out</button>
-  </div>
-</header>
+        <div class="logo">
 
-<main>
+            <h2>HealthLog</h2>
 
-<section id="page-home" class="page active">
+        </div>
 
-<div class="chips">
-<button class="chip active" onclick="showHome('overview')">Overview</button>
-<button class="chip" onclick="showHome('weekly')">Weekly</button>
-<button class="chip" onclick="showHome('achievements')">Achievements</button>
-<button class="chip" onclick="showHome('runs')">Runs</button>
-<button class="chip" onclick="showHome('projection')">Projection</button>
+        <nav>
+
+            <button data-route="dashboard">
+                Dashboard
+            </button>
+
+            <button data-route="nutrition">
+                Nutrition
+            </button>
+
+            <button data-route="strength">
+                Strength
+            </button>
+
+            <button data-route="charts">
+                Charts
+            </button>
+
+            <button data-route="history">
+                History
+            </button>
+
+            <button data-route="add">
+                Add Entry
+            </button>
+
+        </nav>
+
+    </aside>
+
+    <!-- ===============================
+         Main
+    ================================ -->
+
+    <main id="main-content">
+
+        <header id="topbar">
+
+            <button
+                id="menu-toggle">
+
+                ☰
+
+            </button>
+
+            <h1>
+
+                Health Log v2
+
+            </h1>
+
+        </header>
+
+        <section
+            id="page-content">
+
+        </section>
+
+    </main>
+
 </div>
 
-<div id="home-overview" class="subpage active">
-<div id="overview-cards" class="grid2"></div>
-<div id="today-summary"></div>
-<div id="goal-progress"></div>
-<div id="latest-entry"></div>
-</div>
+<script
+    type="module"
+    src="js/app.js">
 
-<div id="home-weekly" class="subpage">
-<div id="weekly-summary"></div>
-<div id="weekly-charts"></div>
-</div>
-
-<div id="home-achievements" class="subpage">
-<div id="achievement-list"></div>
-</div>
-
-<div id="home-runs" class="subpage">
-<div class="section-title">Running Performance</div>
-
-<div class="grid3">
-<div id="run-total"></div>
-<div id="run-distance"></div>
-<div id="run-best5k"></div>
-<div id="run-best10k"></div>
-<div id="run-bestpace"></div>
-<div id="run-longest"></div>
-</div>
-
-<div id="runs-table"></div>
-</div>
-
-<div id="home-projection" class="subpage">
-<div id="projection-card"></div>
-</div>
-
-</section>
-
-<section id="page-nutrition" class="page">
-
-<div class="toolbar">
-<input id="nutrition-search" placeholder="Search food or date">
-<select id="nutrition-range">
-<option>7 Days</option>
-<option>30 Days</option>
-<option>90 Days</option>
-<option>All</option>
-</select>
-</div>
-
-<div id="nutrition-stats" class="grid2"></div>
-
-<div id="nutrition-months"></div>
-
-</section>
-
-<section id="page-strength" class="page">
-
-<div class="chips">
-<button class="chip active" onclick="showStrength('history')">History</button>
-<button class="chip" onclick="showStrength('prs')">PRs</button>
-<button class="chip" onclick="showStrength('volume')">Volume</button>
-</div>
-
-<div id="strength-history" class="subpage active"></div>
-<div id="strength-prs" class="subpage"></div>
-<div id="strength-volume" class="subpage"></div>
-
-</section>
-
-<section id="page-charts" class="page">
-
-<div class="chips">
-<button class="chip active" onclick="setChart('weight')">Weight</button>
-<button class="chip" onclick="setChart('protein')">Protein</button>
-<button class="chip" onclick="setChart('calories')">Calories</button>
-<button class="chip" onclick="setChart('steps')">Steps</button>
-<button class="chip" onclick="setChart('hrv')">HRV</button>
-<button class="chip" onclick="setChart('rhr')">RHR</button>
-</div>
-
-<div id="chart-stats"></div>
-<div id="chart-container"></div>
-
-</section>
-
-<section id="page-history" class="page">
-
-<div class="toolbar">
-<input id="history-search" placeholder="Search date, notes, workout">
-<select id="history-filter">
-<option>All</option>
-<option>Workout</option>
-<option>Rest</option>
-<option>High Calories</option>
-<option>Low Protein</option>
-</select>
-</div>
-
-<div id="history-months"></div>
-
-</section>
-
-<section id="page-add" class="page">
-
-<h2>Add Daily Data</h2>
-
-<textarea id="json-input" placeholder="Paste JSON"></textarea>
-
-<div class="button-row">
-<button onclick="parseAndSave()">Save</button>
-<button onclick="clearJson()">Clear</button>
-</div>
-
-<div id="add-msg"></div>
-
-</section>
-
-</main>
-
-<nav class="bottom-nav">
-
-<button class="nav-btn active" onclick="showTab('home',this)">
-<span>🏠</span>
-<label>Home</label>
-</button>
-
-<button class="nav-btn" onclick="showTab('nutrition',this)">
-<span>🍽</span>
-<label>Nutrition</label>
-</button>
-
-<button class="nav-btn" onclick="showTab('strength',this)">
-<span>💪</span>
-<label>Strength</label>
-</button>
-
-<button class="nav-btn" onclick="showTab('charts',this)">
-<span>📈</span>
-<label>Charts</label>
-</button>
-
-<button class="nav-btn" onclick="showTab('history',this)">
-<span>📅</span>
-<label>History</label>
-</button>
-
-<button class="nav-btn" onclick="showTab('add',this)">
-<span>➕</span>
-<label>Add</label>
-</button>
-
-</nav>
-
-<script src="js/app.js"></script>
+</script>
 
 </body>
+
 </html>
