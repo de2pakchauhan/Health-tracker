@@ -1,20 +1,26 @@
 /* ===========================================================
    Health Log v2
    File : js/core/router.js
-   Purpose : Navigation Manager
+   Purpose : Application Router
 =========================================================== */
 
-import { Store } from "./state.js";
-
-class RouterClass {
+class AppRouter {
 
     constructor() {
 
         this.routes = new Map();
 
+        this.currentRoute = null;
+
         this.currentPage = null;
 
+        this.defaultRoute = "dashboard";
+
     }
+
+    /* ======================================================
+       Register Page
+    ====================================================== */
 
     register(name, page) {
 
@@ -22,25 +28,71 @@ class RouterClass {
 
     }
 
-    init() {
+    /* ======================================================
+       Start Router
+    ====================================================== */
 
-        window.addEventListener("popstate", (event) => {
+    start() {
 
-            const page = event.state?.page || "home";
+        window.addEventListener(
 
-            this.go(page, false);
+            "hashchange",
 
-        });
+            () => this.resolve()
+
+        );
+
+        window.addEventListener(
+
+            "load",
+
+            () => this.resolve()
+
+        );
+
+        this.resolve();
 
     }
 
-    go(pageName, pushHistory = true) {
+    /* ======================================================
+       Resolve Route
+    ====================================================== */
 
-        const page = this.routes.get(pageName);
+    resolve() {
+
+        let route =
+
+            window.location.hash
+
+                .replace("#", "")
+
+                .trim();
+
+        if (!route) {
+
+            route = this.defaultRoute;
+
+        }
+
+        if (!this.routes.has(route)) {
+
+            route = this.defaultRoute;
+
+        }
+
+        this.navigate(route, false);
+
+    }
+
+    /* ======================================================
+       Navigate
+    ====================================================== */
+
+    navigate(route, updateHash = true) {
+
+        const page = this.routes.get(route);
 
         if (!page) {
-
-            console.error(`Route '${pageName}' not found`);
 
             return;
 
@@ -52,57 +104,96 @@ class RouterClass {
 
         }
 
-        Store.setPage(pageName);
+        this.currentRoute = route;
 
         this.currentPage = page;
 
-        if (this.currentPage.render) {
+        if (updateHash) {
 
-            this.currentPage.render();
+            if (
 
-        }
+                window.location.hash !==
 
-        this.updateNavigation(pageName);
+                "#" + route
 
-        if (pushHistory) {
+            ) {
 
-            history.pushState(
-                { page: pageName },
-                "",
-                "#" + pageName
-            );
+                window.location.hash = route;
+
+            }
 
         }
+
+        this.highlightNavigation();
+
+        page.render();
 
     }
 
-    updateNavigation(activePage) {
+    /* ======================================================
+       Active Navigation
+    ====================================================== */
+
+    highlightNavigation() {
 
         document
-            .querySelectorAll("[data-page]")
+
+            .querySelectorAll(
+
+                "[data-route]"
+
+            )
+
             .forEach(button => {
 
                 button.classList.toggle(
+
                     "active",
-                    button.dataset.page === activePage
+
+                    button.dataset.route ===
+
+                    this.currentRoute
+
                 );
 
             });
 
     }
 
-    current() {
+    /* ======================================================
+       Current Route
+    ====================================================== */
 
-        return this.currentPage;
+    getCurrentRoute() {
+
+        return this.currentRoute;
 
     }
 
-    listRoutes() {
+    /* ======================================================
+       Registered Routes
+    ====================================================== */
 
-        return [...this.routes.keys()];
+    getRoutes() {
+
+        return [
+
+            ...this.routes.keys()
+
+        ];
+
+    }
+
+    /* ======================================================
+       Exists
+    ====================================================== */
+
+    has(route) {
+
+        return this.routes.has(route);
 
     }
 
 }
 
-export const Router = new RouterClass();
+export const Router = new AppRouter();
