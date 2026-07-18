@@ -5,7 +5,7 @@
 =========================================================== */
 
 import { Config } from "./config.js";
-import { State, Store } from "./state.js";
+import { State } from "./state.js";
 
 class StorageManager {
 
@@ -19,7 +19,7 @@ class StorageManager {
     }
 
     /* ======================================================
-       Settings
+       SETTINGS
     ====================================================== */
 
     loadSettings() {
@@ -34,7 +34,7 @@ class StorageManager {
 
             const settings = JSON.parse(raw);
 
-            Object.assign(State.settings, settings);
+            State.setSettings(settings);
 
         }
 
@@ -51,8 +51,11 @@ class StorageManager {
         try {
 
             localStorage.setItem(
+
                 Config.SETTINGS_KEY,
+
                 JSON.stringify(State.settings)
+
             );
 
         }
@@ -66,7 +69,7 @@ class StorageManager {
     }
 
     /* ======================================================
-       Cached Health Data
+       HEALTH CACHE
     ====================================================== */
 
     loadCache() {
@@ -74,16 +77,18 @@ class StorageManager {
         try {
 
             const raw = localStorage.getItem(
+
                 Config.CACHE_KEY
+
             );
 
             if (!raw) return;
 
-            const data = JSON.parse(raw);
+            const days = JSON.parse(raw);
 
-            if (Array.isArray(data)) {
+            if (Array.isArray(days)) {
 
-                Store.setDays(data);
+                State.setDays(days);
 
             }
 
@@ -102,8 +107,15 @@ class StorageManager {
         try {
 
             localStorage.setItem(
+
                 Config.CACHE_KEY,
-                JSON.stringify(State.data.days)
+
+                JSON.stringify(
+
+                    State.getDays()
+
+                )
+
             );
 
         }
@@ -117,13 +129,15 @@ class StorageManager {
     }
 
     /* ======================================================
-       Last Sync
+       LAST SYNC
     ====================================================== */
 
     loadLastSync() {
 
         return localStorage.getItem(
+
             Config.LAST_SYNC_KEY
+
         );
 
     }
@@ -131,21 +145,29 @@ class StorageManager {
     saveLastSync(date) {
 
         localStorage.setItem(
+
             Config.LAST_SYNC_KEY,
+
             date
+
         );
+
+        State.setLastSync(date);
 
     }
 
     /* ======================================================
-       Generic Helpers
+       GENERIC STORAGE
     ====================================================== */
 
     save(key, value) {
 
         localStorage.setItem(
+
             Config.STORAGE_PREFIX + "-" + key,
+
             JSON.stringify(value)
+
         );
 
     }
@@ -155,7 +177,9 @@ class StorageManager {
         try {
 
             const raw = localStorage.getItem(
+
                 Config.STORAGE_PREFIX + "-" + key
+
             );
 
             if (!raw) return defaultValue;
@@ -175,7 +199,9 @@ class StorageManager {
     remove(key) {
 
         localStorage.removeItem(
+
             Config.STORAGE_PREFIX + "-" + key
+
         );
 
     }
@@ -185,17 +211,25 @@ class StorageManager {
         Object.keys(localStorage)
 
             .filter(key =>
-                key.startsWith(Config.STORAGE_PREFIX)
+
+                key.startsWith(
+
+                    Config.STORAGE_PREFIX
+
+                )
+
             )
 
             .forEach(key =>
+
                 localStorage.removeItem(key)
+
             );
 
     }
 
     /* ======================================================
-       Auto Save
+       AUTO SAVE
     ====================================================== */
 
     autoSave() {
