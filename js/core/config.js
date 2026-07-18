@@ -18,7 +18,11 @@ export const Config = Object.freeze({
     // Google Apps Script
     // ----------------------------
 
-    API_URL: "",          // <-- Paste Apps Script Web App URL
+    API_URL:
+        "https://script.google.com/macros/s/AKfycbx8RQ4IP9sCldFxyOJSwMIF-5ekZ9LqaSB1sZPcqbDJkPO8BAUgR1m2uw9AaH9b8o7vOA/exec",
+
+    CLIENT_ID:
+        "401103632011-qgjvt6fko9knb651oe6b89rrs12fgobk.apps.googleusercontent.com",
 
     REQUEST_TIMEOUT: 30000,
 
