@@ -24,6 +24,13 @@ class Store {
 
         };
 
+        this.sync = {
+
+            status: "idle",
+            lastSync: null
+
+        };
+
         this.listeners = new Set();
 
     }
@@ -46,9 +53,11 @@ class Store {
 
     notify() {
 
+        const state = this.getState();
+
         for (const listener of this.listeners) {
 
-            listener(this.getState());
+            listener(state);
 
         }
 
@@ -64,7 +73,9 @@ class Store {
 
             data: Helpers.clone(this.data),
 
-            settings: Helpers.clone(this.settings)
+            settings: Helpers.clone(this.settings),
+
+            sync: Helpers.clone(this.sync)
 
         };
 
@@ -83,6 +94,24 @@ class Store {
     }
 
     /* ======================================================
+       Compatibility
+    ====================================================== */
+
+    setDays(days) {
+
+        this.data.days = Helpers.clone(days);
+
+        this.notify();
+
+    }
+
+    getDays() {
+
+        return Helpers.clone(this.data.days);
+
+    }
+
+    /* ======================================================
        Replace Settings
     ====================================================== */
 
@@ -95,6 +124,26 @@ class Store {
             ...settings
 
         };
+
+        this.notify();
+
+    }
+
+    /* ======================================================
+       Sync Status
+    ====================================================== */
+
+    setSyncStatus(status) {
+
+        this.sync.status = status;
+
+        this.notify();
+
+    }
+
+    setLastSync(date = new Date()) {
+
+        this.sync.lastSync = date;
 
         this.notify();
 
@@ -166,6 +215,13 @@ class Store {
 
         };
 
+        this.sync = {
+
+            status: "idle",
+            lastSync: null
+
+        };
+
         this.notify();
 
     }
@@ -173,3 +229,9 @@ class Store {
 }
 
 export const State = new Store();
+
+/* ===========================================================
+   Backward Compatibility
+=========================================================== */
+
+export const Store = State;
