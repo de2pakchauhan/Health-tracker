@@ -1,223 +1,34 @@
-/* ==========================================================
-   Health Log v2
+/* ===========================================================
+   Health Log v3.1
    File : js/core/config.js
-   Purpose : Global Configuration
-========================================================== */
+=========================================================== */
 
 export const Config = Object.freeze({
 
     APP_NAME: "Health Log",
 
-    VERSION: "2.0.0",
+    VERSION: "3.1.0",
 
     BUILD_DATE: "2026-07",
 
     DEBUG: true,
 
     // ----------------------------
-    // Google Apps Script
+    // Google Apps Script Web App URL
     // ----------------------------
 
-    API_URL:
-        "https://script.google.com/macros/s/AKfycbx8RQ4IP9sCldFxyOJSwMIF-5ekZ9LqaSB1sZPcqbDJkPO8BAUgR1m2uw9AaH9b8o7vOA/exec",
-
-    CLIENT_ID:
-        "401103632011-qgjvt6fko9knb651oe6b89rrs12fgobk.apps.googleusercontent.com",
-
-    REQUEST_TIMEOUT: 30000,
+    API_URL: "",          // <-- Paste your Apps Script /exec URL here
 
     // ----------------------------
-    // Storage
+    // Google OAuth2 Client ID
     // ----------------------------
 
-    STORAGE_PREFIX: "healthlog",
-
-    CACHE_KEY: "healthlog-cache",
-
-    SETTINGS_KEY: "healthlog-settings",
-
-    LAST_SYNC_KEY: "healthlog-last-sync",
+    GOOGLE_CLIENT_ID: "", // <-- Paste your OAuth 2.0 Client ID here
 
     // ----------------------------
-    // Pagination
+    // Network
     // ----------------------------
 
-    PAGE_SIZE: {
-
-        HISTORY: 30,
-
-        NUTRITION: 30,
-
-        STRENGTH: 30,
-
-        RUNS: 20
-
-    },
-
-    // ----------------------------
-    // Units
-    // ----------------------------
-
-    UNITS: {
-
-        WEIGHT: "kg",
-
-        DISTANCE: "km",
-
-        ENERGY: "kcal",
-
-        PROTEIN: "g",
-
-        WATER: "ml"
-
-    },
-
-    // ----------------------------
-    // Default Goals
-    // ----------------------------
-
-    GOALS: {
-
-        TARGET_WEIGHT: 70,
-
-        CALORIES: 1600,
-
-        PROTEIN: 110,
-
-        STEPS: 10000,
-
-        MOVE: 700,
-
-        WATER: 3000,
-
-        SLEEP: 8
-
-    },
-
-    // ----------------------------
-    // Routes
-    // ----------------------------
-
-    ROUTES: {
-
-        HOME: "home",
-
-        NUTRITION: "nutrition",
-
-        STRENGTH: "strength",
-
-        CHARTS: "charts",
-
-        HISTORY: "history",
-
-        ADD: "add"
-
-    },
-
-    // ----------------------------
-    // Home Tabs
-    // ----------------------------
-
-    HOME_TABS: [
-
-        "overview",
-
-        "weekly",
-
-        "achievements",
-
-        "runs",
-
-        "projection"
-
-    ],
-
-    // ----------------------------
-    // Nutrition Tabs
-    // ----------------------------
-
-    NUTRITION_TABS: [
-
-        "today",
-
-        "7days",
-
-        "30days",
-
-        "90days",
-
-        "monthly"
-
-    ],
-
-    // ----------------------------
-    // Charts
-    // ----------------------------
-
-    CHARTS: [
-
-        "weight",
-
-        "calories",
-
-        "protein",
-
-        "steps",
-
-        "move",
-
-        "burn",
-
-        "sleep",
-
-        "rhr",
-
-        "hrv"
-
-    ]
-
-});
-
-
-
-/* ==========================================================
-   Colors
-========================================================== */
-
-export const Colors = Object.freeze({
-
-    PRIMARY: "#818CF8",
-
-    BLUE: "#60A5FA",
-
-    GREEN: "#34D399",
-
-    RED: "#F87171",
-
-    ORANGE: "#FB923C",
-
-    PURPLE: "#A78BFA",
-
-    YELLOW: "#FBBF24",
-
-    TEAL: "#2DD4BF"
-
-});
-
-
-
-/* ==========================================================
-   Status
-========================================================== */
-
-export const Status = Object.freeze({
-
-    OFFLINE: "offline",
-
-    CONNECTING: "connecting",
-
-    ONLINE: "online",
-
-    ERROR: "error"
+    REQUEST_TIMEOUT: 15000,
 
 });
