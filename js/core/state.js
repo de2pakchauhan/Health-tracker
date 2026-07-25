@@ -6,7 +6,7 @@
 
 import { Helpers } from "../utils/helpers.js";
 
-class Store {
+class StateStore {
 
     constructor() {
 
