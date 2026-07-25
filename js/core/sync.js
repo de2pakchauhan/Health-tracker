@@ -1,238 +1,102 @@
 /* ===========================================================
-   Health Log v2
+   Health Log v3.1
    File : js/core/sync.js
-   Purpose : Google Apps Script Synchronization
+   Purpose : Google Apps Script Sync with Auth
 =========================================================== */
 
 import { Config } from "./config.js";
-import { State, Store } from "./state.js";
+import { Store } from "./state.js";
 import { Storage } from "./storage.js";
+import { Auth } from "../services/auth.js";
 
 class SyncManager {
 
     constructor() {
-
         this.online = navigator.onLine;
         this.syncing = false;
-
     }
-
-    /* ======================================================
-       Initialize
-    ====================================================== */
 
     async init() {
-
         window.addEventListener("online", () => {
-
             this.online = true;
-
             Store.setSyncStatus("online");
-
-            this.download();
-
+            if (Auth.isAuthenticated()) this.download();
         });
-
         window.addEventListener("offline", () => {
-
             this.online = false;
-
             Store.setSyncStatus("offline");
-
         });
-
-        Store.setSyncStatus(
-            this.online ? "online" : "offline"
-        );
-
-        if (this.online) {
-
+        Store.setSyncStatus(this.online ? "online" : "offline");
+        if (this.online && Auth.isAuthenticated()) {
             await this.download();
-
         }
-
     }
 
-    /* ======================================================
-       HTTP Request
-    ====================================================== */
+    async get(params = {}) {
+        const token = Auth.getToken();
+        if (!token) throw new Error("NOT_AUTHENTICATED");
+        const qs = new URLSearchParams({ ...params, token }).toString();
+        const res = await fetch(Config.API_URL + "?" + qs);
+        if (res.status === 401 || res.status === 403) {
+            Auth.handleUnauthorized();
+            throw new Error("UNAUTHORIZED");
+        }
+        if (!res.ok) throw new Error("GET Error: " + res.status);
+        return res.json();
+    }
 
-    async request(payload) {
-
+    async post(payload) {
+        const token = Auth.getToken();
+        if (!token) throw new Error("NOT_AUTHENTICATED");
         const controller = new AbortController();
-
-        const timeout = setTimeout(() => {
-
-            controller.abort();
-
-        }, Config.REQUEST_TIMEOUT);
-
+        const timer = setTimeout(() => controller.abort(), Config.REQUEST_TIMEOUT);
         try {
-
-            const response = await fetch(Config.API_URL, {
-
+            const res = await fetch(Config.API_URL, {
                 method: "POST",
-
-                headers: {
-
-                    "Content-Type": "application/json"
-
-                },
-
-                body: JSON.stringify(payload),
-
-                signal: controller.signal
-
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ ...payload, token }),
+                signal: controller.signal,
             });
-
-            clearTimeout(timeout);
-
-            if (!response.ok) {
-
-                throw new Error(
-                    "Network Error : " + response.status
-                );
-
+            clearTimeout(timer);
+            if (res.status === 401 || res.status === 403) {
+                Auth.handleUnauthorized();
+                throw new Error("UNAUTHORIZED");
             }
-
-            return await response.json();
-
-        }
-
-        catch (err) {
-
-            clearTimeout(timeout);
-
-            console.error(err);
-
+            if (!res.ok) throw new Error("POST Error: " + res.status);
+            return res.json();
+        } catch (err) {
+            clearTimeout(timer);
             throw err;
-
         }
-
     }
-
-    /* ======================================================
-       Download Complete Database
-    ====================================================== */
 
     async download() {
-
-        if (!this.online) return;
-
-        if (this.syncing) return;
-
+        if (!this.online || this.syncing || !Auth.isAuthenticated()) return;
         this.syncing = true;
-
         try {
-
-            const result = await this.request({
-
-                action: "load"
-
-            });
-
-            if (Array.isArray(result.days)) {
-
-                Store.setDays(result.days);
-
-                Storage.saveCache();
-
-            }
-
-            Store.setLastSync(
-                new Date().toISOString()
-            );
-
-            Storage.saveLastSync(
-                new Date().toISOString()
-            );
-
-        }
-
-        catch (err) {
-
-            console.error("Download failed", err);
-
-        }
-
-        finally {
-
+            const [fit, str] = await Promise.all([
+                this.get({ sheet: "fitness" }),
+                this.get({ sheet: "strength" }),
+            ]);
+            if (fit.status === "ok") Store.setFitnessData(fit.data || []);
+            if (str.status === "ok") Store.setStrengthData(str.data || []);
+            Storage.saveCache();
+            Store.setLastSync(new Date().toISOString());
+        } catch (err) {
+            console.error("Download failed:", err);
+        } finally {
             this.syncing = false;
-
         }
-
     }
 
-    /* ======================================================
-       Add Record
-    ====================================================== */
-
-    async add(day) {
-
-        const result = await this.request({
-
-            action: "add",
-
-            data: day
-
-        });
-
+    async upsert(sheet, row) {
+        await this.post({ sheet, action: "upsert", row });
         await this.download();
-
-        return result;
-
     }
-
-    /* ======================================================
-       Update Record
-    ====================================================== */
-
-    async update(day) {
-
-        const result = await this.request({
-
-            action: "update",
-
-            data: day
-
-        });
-
-        await this.download();
-
-        return result;
-
-    }
-
-    /* ======================================================
-       Delete Record
-    ====================================================== */
-
-    async delete(date) {
-
-        const result = await this.request({
-
-            action: "delete",
-
-            date
-
-        });
-
-        await this.download();
-
-        return result;
-
-    }
-
-    /* ======================================================
-       Manual Sync
-    ====================================================== */
 
     async syncNow() {
-
         return this.download();
-
     }
-
 }
 
 export const Sync = new SyncManager();
