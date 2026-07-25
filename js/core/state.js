@@ -228,7 +228,7 @@ class Store {
 
 }
 
-export const State = new Store();
+export const State = new StateStore();
 
 /* ===========================================================
    Backward Compatibility
