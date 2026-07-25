@@ -5,7 +5,7 @@
 =========================================================== */
 
 import { Config } from "./config.js";
-import { Store } from "./state.js";
+import { State } from "./state.js";
 import { Storage } from "./storage.js";
 import { Auth } from "../services/auth.js";
 
@@ -19,14 +19,14 @@ class SyncManager {
     async init() {
         window.addEventListener("online", () => {
             this.online = true;
-            Store.setSyncStatus("online");
+            State.setSyncStatus("online");
             if (Auth.isAuthenticated()) this.download();
         });
         window.addEventListener("offline", () => {
             this.online = false;
-            Store.setSyncStatus("offline");
+            State.setSyncStatus("offline");
         });
-        Store.setSyncStatus(this.online ? "online" : "offline");
+        State.setSyncStatus(this.online ? "online" : "offline");
         if (this.online && Auth.isAuthenticated()) {
             await this.download();
         }
@@ -71,23 +71,51 @@ class SyncManager {
     }
 
     async download() {
-        if (!this.online || this.syncing || !Auth.isAuthenticated()) return;
-        this.syncing = true;
-        try {
-            const [fit, str] = await Promise.all([
-                this.get({ sheet: "fitness" }),
-                this.get({ sheet: "strength" }),
-            ]);
-            if (fit.status === "ok") Store.setFitnessData(fit.data || []);
-            if (str.status === "ok") Store.setStrengthData(str.data || []);
-            Storage.saveCache();
-            Store.setLastSync(new Date().toISOString());
-        } catch (err) {
-            console.error("Download failed:", err);
-        } finally {
-            this.syncing = false;
+
+    if (!this.online || this.syncing || !Auth.isAuthenticated()) return;
+
+    this.syncing = true;
+
+    try {
+
+        const [fit, str] = await Promise.all([
+            this.get({ sheet: "fitness" }),
+            this.get({ sheet: "strength" })
+        ]);
+
+        if (fit.status === "ok") {
+
+            State.setDays(fit.data || []);
+
         }
+
+        if (str.status === "ok") {
+
+            State.setSettings({
+                strength: str.data || []
+            });
+
+        }
+
+        Storage.saveCache();
+
+        State.setLastSync(new Date().toISOString());
+
     }
+
+    catch (err) {
+
+        console.error("Download failed:", err);
+
+    }
+
+    finally {
+
+        this.syncing = false;
+
+    }
+
+}
 
     async upsert(sheet, row) {
         await this.post({ sheet, action: "upsert", row });
