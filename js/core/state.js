@@ -12,7 +12,7 @@ class StateStore {
 
         this.data = {
 
-            days: []
+            days: [],
             strength: []
 
         };
@@ -212,7 +212,7 @@ class StateStore {
 
         this.data = {
 
-            days: []
+            days: [],
             strength: []
 
         };
