@@ -13,6 +13,7 @@ class StateStore {
         this.data = {
 
             days: []
+            strength: []
 
         };
 
@@ -212,6 +213,7 @@ class StateStore {
         this.data = {
 
             days: []
+            strength: []
 
         };
 
