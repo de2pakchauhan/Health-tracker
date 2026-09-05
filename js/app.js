@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════════
-//  CONFIGURATION – EDIT THESE TWO VALUES
+//  CONFIGURATION
 // ══════════════════════════════════════════════════════════
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbx8RQ4IP9sCldFxyOJSwMIF-5ekZ9LqaSB1sZPcqbDJkPO8BAUgR1m2uw9AaH9b8o7vOA/exec";   // <-- Replace with your private Apps Script URL
-const CLIENT_ID = "401103632011-qgjvt6fko9knb651oe6b89rrs12fgobk.apps.googleusercontent.com"; // <-- Replace with your OAuth Client ID
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbx8RQ4IP9sCldFxyOJSwMIF-5ekZ9LqaSB1sZPcqbDJkPO8BAUgR1m2uw9AaH9b8o7vOA/exec";
+const CLIENT_ID = "401103632011-qgjvt6fko9knb651oe6b89rrs12fgobk.apps.googleusercontent.com";
 // ══════════════════════════════════════════════════════════
 
 const TARGET_KEY = "health-target-v1";
@@ -13,9 +13,13 @@ const C = {
 };
 
 let fitData = [], strData = [], target = 70, currentChart = "weight";
+let currentChartRange = 30; // Chart range
+let nutrRange = 30; // Nutrition range
+let strRange = 30;  // Strength range
+let logRange = 30;  // Log range
 
 // ──────────────────────────────────────────────────────────
-//  OAUTH2 FUNCTIONS (unchanged)
+//  OAUTH2 FUNCTIONS 
 // ──────────────────────────────────────────────────────────
 
 let accessToken = null;
@@ -95,7 +99,7 @@ function updateAuthUI(isAuth) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  HELPERS (unchanged)
+//  HELPERS 
 // ──────────────────────────────────────────────────────────
 
 function lowerKeys(obj) {
@@ -137,7 +141,7 @@ function isoToDate(s) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  DATA PARSING (unchanged)
+//  DATA PARSING 
 // ──────────────────────────────────────────────────────────
 
 function parseRow(r) {
@@ -176,7 +180,6 @@ function parseRow(r) {
 }
 
 function parseStrRows(rows) {
-  console.log("parseStrRows received", rows.length, "rows");
   const sessions = {};
   rows.forEach(r => {
     const date = isoToDate(r.date) || String(r.date || "");
@@ -201,7 +204,7 @@ function parseStrRows(rows) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  UI INDICATORS (unchanged)
+//  UI INDICATORS
 // ──────────────────────────────────────────────────────────
 
 function setDot(state) {
@@ -218,8 +221,7 @@ function setSyncMsg(msg, isErr) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  SHEET COMMUNICATION – UPDATED (No Authorization header)
-//  Token sent as query param for GET and inside body for POST
+//  SHEET COMMUNICATION
 // ──────────────────────────────────────────────────────────
 
 async function loadFromSheets() {
@@ -232,7 +234,6 @@ async function loadFromSheets() {
       return;
     }
 
-    // Append token as query parameter to avoid preflight
     const fitnessUrl = SHEET_URL + "?sheet=fitness&token=" + encodeURIComponent(token);
     const strengthUrl = SHEET_URL + "?sheet=strength&token=" + encodeURIComponent(token);
 
@@ -268,31 +269,16 @@ async function loadFromSheets() {
 
 async function appendToSheet(sheet, row) {
   const token = getAccessToken();
-  if (!token) {
-    throw new Error("Not authenticated – please sign in.");
-  }
+  if (!token) throw new Error("Not authenticated – please sign in.");
 
-  // Send token inside the JSON body, not in Authorization header
-  const payload = {
-    sheet: sheet,
-    action: "append",
-    row: row,
-    token: token
-  };
-
+  const payload = { sheet: sheet, action: "append", row: row, token: token };
   const response = await fetch(SHEET_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"  // avoids preflight
-    },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(payload)
   });
 
   const text = await response.text();
-  console.log("Sheet:", sheet);
-  console.log("Status:", response.status);
-  console.log("Response:", text);
-
   if (response.status === 401 || response.status === 403) {
     localStorage.removeItem("oauth_token");
     accessToken = null;
@@ -300,22 +286,14 @@ async function appendToSheet(sheet, row) {
     throw new Error("Authentication expired – please sign in again.");
   }
 
-  // Parse response to check for server error
   let result;
-  try {
-    result = JSON.parse(text);
-  } catch (_) {
-    throw new Error("Invalid response from server");
-  }
-  if (result.status !== "ok") {
-    throw new Error(result.message || "Unknown error");
-  }
+  try { result = JSON.parse(text); } catch (_) { throw new Error("Invalid response from server"); }
+  if (result.status !== "ok") throw new Error(result.message || "Unknown error");
   return text;
 }
 
 // ──────────────────────────────────────────────────────────
-//  RENDER FUNCTIONS (unchanged – all 300+ lines)
-//  These are exactly as in your original app.js
+//  RENDER FUNCTIONS 
 // ──────────────────────────────────────────────────────────
 
 function renderAll() {
@@ -508,17 +486,36 @@ function renderProjection(lastW) {
   </div>`;
 }
 
+function setNutrRange(val) {
+  nutrRange = val === 'all' ? 'all' : parseInt(val);
+  renderNutrition();
+}
+
 function renderNutrition() {
   const cals = fitData.filter(d => d.calMin), prots = fitData.filter(d => d.protMin);
   const avgCalMin = cals.length ? Math.round(cals.reduce((s, d) => s + d.calMin, 0) / cals.length) : 0;
   const avgCalMax = cals.length ? Math.round(cals.reduce((s, d) => s + d.calMax, 0) / cals.length) : 0;
   const avgProtMin = prots.length ? Math.round(prots.reduce((s, d) => s + d.protMin, 0) / prots.length) : 0;
   const avgProtMax = prots.length ? Math.round(prots.reduce((s, d) => s + d.protMax, 0) / prots.length) : 0;
+  
   document.getElementById("nutr-sub").textContent = fitData.length + " days tracked";
   document.getElementById("nutr-avgs").innerHTML = `
     <div class="stat-card"><div class="stat-label">Avg Calories</div><div class="stat-val" style="color:${C.amber}">${avgCalMin}-${avgCalMax}</div><div class="stat-sub">kcal/day</div></div>
     <div class="stat-card"><div class="stat-label">Avg Protein</div><div class="stat-val" style="color:${C.green}">${avgProtMin}-${avgProtMax}g</div><div class="stat-sub">grams/day</div></div>`;
-  document.getElementById("nutr-list").innerHTML = [...fitData].reverse().map(d => `
+  
+  const ranges = [
+    { label: "7D", val: 7 }, { label: "30D", val: 30 }, { label: "60D", val: 60 },
+    { label: "90D", val: 90 }, { label: "180D", val: 180 }, { label: "1Y", val: 365 }, { label: "All", val: 'all' }
+  ];
+  const rangeHtml = `
+    <div class="chips" style="margin-bottom:14px">
+      ${ranges.map(r => `<div class="chip ${nutrRange === r.val ? 'active' : ''}" onclick="setNutrRange('${r.val}')">${r.label}</div>`).join("")}
+    </div>`;
+
+  const pts = [...fitData].reverse();
+  const show = nutrRange === 'all' ? pts : pts.slice(0, nutrRange);
+  
+  document.getElementById("nutr-list").innerHTML = rangeHtml + show.map(d => `
     <div class="card" style="padding:10px 14px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:13px;font-weight:700;color:${C.white}">${d.date}</div>
@@ -537,10 +534,28 @@ function renderNutrition() {
     </div>`).join("");
 }
 
+function setStrRange(val) {
+  strRange = val === 'all' ? 'all' : parseInt(val);
+  renderStrength();
+}
+
 function renderStrength() {
   document.getElementById("str-sub").textContent = strData.length + " sessions logged";
   if (!strData.length) { document.getElementById("str-list").innerHTML = `<div class="card" style="color:${C.dim};font-size:13px">No sessions yet.</div>`; return; }
-  document.getElementById("str-list").innerHTML = [...strData].reverse().map(s => `
+  
+  const ranges = [
+    { label: "7D", val: 7 }, { label: "30D", val: 30 }, { label: "60D", val: 60 },
+    { label: "90D", val: 90 }, { label: "180D", val: 180 }, { label: "1Y", val: 365 }, { label: "All", val: 'all' }
+  ];
+  const rangeHtml = `
+    <div class="chips" style="margin-bottom:14px">
+      ${ranges.map(r => `<div class="chip ${strRange === r.val ? 'active' : ''}" onclick="setStrRange('${r.val}')">${r.label}</div>`).join("")}
+    </div>`;
+
+  const pts = [...strData].reverse();
+  const show = strRange === 'all' ? pts : pts.slice(0, strRange);
+
+  document.getElementById("str-list").innerHTML = rangeHtml + show.map(s => `
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid ${C.border}">
         <div>
@@ -571,26 +586,61 @@ function setChart(key) {
   renderChart(key);
 }
 
+function setChartRange(days) {
+  currentChartRange = days === 'all' ? 'all' : parseInt(days);
+  renderChart(currentChart);
+}
+
 function renderChart(key) {
   const COLORS = { weight: C.blue, rhr: C.red, steps: C.green, move: C.orange, burn: C.purple, hrv: C.teal };
   const color = COLORS[key] || C.blue;
-  const pts = fitData.filter(d => d[key] != null);
+  
+  let allPts = fitData.filter(d => d[key] != null);
+  let pts = currentChartRange === 'all' ? allPts : allPts.slice(-currentChartRange);
+  
+  if (!pts.length) { 
+    document.getElementById("chart-container").innerHTML = `<div style="color:${C.dim};font-size:13px;padding:16px 0">No data for this range</div>`; 
+    return; 
+  }
+
   const vals = pts.map(d => d[key]);
-  if (!vals.length) { document.getElementById("chart-container").innerHTML = `<div style="color:${C.dim};font-size:13px;padding:16px 0">No data yet</div>`; return; }
   const mn = Math.min(...vals), mx = Math.max(...vals), avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
-  document.getElementById("chart-stats").innerHTML = [["Min", mn, C.red], ["Avg", avg, C.amber], ["Max", mx, C.green]].map(([l, v, c]) => `
+  
+  const ranges = [
+    { label: "7D", val: 7 }, { label: "30D", val: 30 }, { label: "60D", val: 60 },
+    { label: "90D", val: 90 }, { label: "180D", val: 180 }, { label: "1Y", val: 365 }, { label: "All", val: 'all' }
+  ];
+  const rangeHtml = `
+    <div class="chips" style="margin-bottom:14px">
+      ${ranges.map(r => `<div class="chip ${currentChartRange === r.val ? 'active' : ''}" onclick="setChartRange('${r.val}')">${r.label}</div>`).join("")}
+    </div>`;
+
+  const statsHtml = [["Min", mn, C.red], ["Avg", avg, C.amber], ["Max", mx, C.green]].map(([l, v, c]) => `
     <div class="card" style="text-align:center;padding:10px 6px;margin-bottom:0">
       <div style="font-size:16px;font-weight:700;color:${c}">${typeof v === "number" ? v % 1 ? v.toFixed(1) : v : v}</div>
       <div style="font-size:10px;color:${C.dim}">${l}</div>
     </div>`).join("");
-  const W = 320, H = 130, PX = 10, PY = 14, rng = mx - mn || 1;
+
+  document.getElementById("chart-stats").innerHTML = statsHtml;
+  
+  if (pts.length < 2) {
+    document.getElementById("chart-container").innerHTML = rangeHtml + `<div style="color:${C.dim};font-size:13px;padding:16px 0">Need at least 2 data points to draw chart</div>`;
+    return;
+  }
+
+  const W = 800, H = 300, PX = 30, PY = 34, rng = mx - mn || 1;
   const x = i => PX + (i / (pts.length - 1)) * (W - PX * 2);
   const y = v => PY + (H - PY * 2) - ((v - mn) / rng) * (H - PY * 2);
   const line = pts.map((r, i) => x(i) + "," + y(r[key])).join(" ");
   const fill = x(0) + "," + H + " " + line + " " + x(pts.length - 1) + "," + H;
   const ticks = [0, Math.floor(pts.length / 2), pts.length - 1];
+  
+  const title = key.charAt(0).toUpperCase() + key.slice(1);
+  const titleLabel = currentChartRange === 'all' ? `${title} all time` : `${title} last ${currentChartRange} logs`;
+
   document.getElementById("chart-container").innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px">${key.charAt(0).toUpperCase() + key.slice(1)} all time</div>
+    ${rangeHtml}
+    <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px">${titleLabel}</div>
     <div style="overflow-x:auto">
       <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
         <defs>
@@ -600,17 +650,34 @@ function renderChart(key) {
           </linearGradient>
         </defs>
         <polygon points="${fill}" fill="url(#cg)"/>
-                <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+        <polyline points="${line}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round"/>
         ${ticks.map(i => `
-          <circle cx="${x(i)}" cy="${y(pts[i][key])}" r="3" fill="${color}"/>
-          <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="${C.dim}">${pts[i].date}</text>
-          <text x="${x(i)}" y="${Math.max(12, y(pts[i][key]) - 5)}" text-anchor="middle" font-size="9" fill="${color}">${pts[i][key]}</text>`).join("")}
+          <circle cx="${x(i)}" cy="${y(pts[i][key])}" r="5" fill="${color}"/>
+          <text x="${x(i)}" y="${H - 5}" text-anchor="middle" font-size="14" font-weight="600" fill="${C.dim}">${pts[i].date}</text>
+          <text x="${x(i)}" y="${Math.max(16, y(pts[i][key]) - 12)}" text-anchor="middle" font-size="14" font-weight="700" fill="${color}">${pts[i][key]}</text>`).join("")}
       </svg>
     </div>`;
 }
 
+function setLogRange(val) {
+  logRange = val === 'all' ? 'all' : parseInt(val);
+  renderLog();
+}
+
 function renderLog() {
-  document.getElementById("log-list").innerHTML = [...fitData].reverse().map(r => `
+  const ranges = [
+    { label: "7D", val: 7 }, { label: "30D", val: 30 }, { label: "60D", val: 60 },
+    { label: "90D", val: 90 }, { label: "180D", val: 180 }, { label: "1Y", val: 365 }, { label: "All", val: 'all' }
+  ];
+  const rangeHtml = `
+    <div class="chips" style="margin-bottom:14px">
+      ${ranges.map(r => `<div class="chip ${logRange === r.val ? 'active' : ''}" onclick="setLogRange('${r.val}')">${r.label}</div>`).join("")}
+    </div>`;
+
+  const pts = [...fitData].reverse();
+  const show = logRange === 'all' ? pts : pts.slice(0, logRange);
+
+  document.getElementById("log-list").innerHTML = rangeHtml + show.map(r => `
     <div class="card" style="margin-bottom:8px;padding:12px 14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
         <div style="font-size:13px;font-weight:700;color:${C.white}">${r.date}</div>
@@ -630,7 +697,7 @@ function renderLog() {
 }
 
 // ──────────────────────────────────────────────────────────
-//  ADD DATA (modified to check authentication)
+//  ADD DATA
 // ──────────────────────────────────────────────────────────
 
 function showAddMsg(msg, isOk) {
@@ -758,7 +825,7 @@ async function parseAndSave() {
 }
 
 // ──────────────────────────────────────────────────────────
-//  TARGET WEIGHT (unchanged)
+//  TARGET WEIGHT 
 // ──────────────────────────────────────────────────────────
 
 function bumpTarget(d) {
@@ -769,7 +836,7 @@ function bumpTarget(d) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  NAV & SUBS (unchanged)
+//  NAV & SUBS 
 // ──────────────────────────────────────────────────────────
 
 function showTab(id, btn) {
@@ -788,7 +855,7 @@ function showSub(page, sub) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  EXAMPLE JSONS (unchanged)
+//  EXAMPLE JSONS 
 // ──────────────────────────────────────────────────────────
 
 const EXAMPLES = {
@@ -859,7 +926,7 @@ function showExample(type, btn) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  INIT (modified for OAuth2)
+//  INIT
 // ──────────────────────────────────────────────────────────
 
 const saved = localStorage.getItem(TARGET_KEY);
