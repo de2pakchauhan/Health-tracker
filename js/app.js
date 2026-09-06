@@ -533,7 +533,7 @@ function renderDashboard() {
     { icon: '💪', text: "Strength is improving! You hit 4 PRs this month." },
     { icon: '🚶', text: "Try to increase your daily steps. Aim for 10k steps." },
   ];
-  document.getElementById('insights-list').innerHTML = insights.map(in => `
+  document.getElementById('insights-list').innerHTML = insights.map(insight => `
     <div class="insight-item"><span class="icon">${in.icon}</span> ${in.text}</div>
   `).join('');
 
