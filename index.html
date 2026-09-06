@@ -1,94 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0">
-
-<title>Health Log v3.1</title>
-
-<meta
-    name="theme-color"
-    content="#2563eb">
-
-<link
-    rel="stylesheet"
-    href="css/style.css">
-
-<!-- Google Identity Services -->
-<script
-    src="https://accounts.google.com/gsi/client"
-    async
-    defer>
-</script>
-
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/>
+  <title>FitnessOS</title>
+  <link href="css/style.css" rel="stylesheet"/>
+  <script src="https://accounts.google.com/gsi/client"></script>
 </head>
-
 <body>
 
-<div id="app">
-
-    <!-- Auth Banner — shown when signed out -->
-    <div id="auth-banner">
-        <div class="auth-banner-inner">
-            <div class="auth-icon">🏋️</div>
-            <h2>Health Log</h2>
-            <p>Sign in with Google to access your health data</p>
-            <button id="btn-signin" class="btn-google">
-                <svg width="18" height="18" viewBox="0 0 18 18">
-                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-                    <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
-                </svg>
-                Sign in with Google
-            </button>
-        </div>
+<!-- HEADER -->
+<div class="header">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h1>FitnessOS</h1>
+      <p id="hdr-sub">Loading...</p>
     </div>
-
-    <!-- Sidebar -->
-    <aside id="sidebar">
-
-        <div class="logo">
-            <h2>HealthLog</h2>
-        </div>
-
-        <nav>
-            <button data-route="dashboard">Dashboard</button>
-            <button data-route="nutrition">Nutrition</button>
-            <button data-route="strength">Strength</button>
-            <button data-route="charts">Charts</button>
-            <button data-route="history">History</button>
-            <button data-route="add">Add Entry</button>
-        </nav>
-
-        <div class="sidebar-footer">
-            <button id="btn-signout" class="btn-signout" style="display:none">
-                Sign Out
-            </button>
-        </div>
-
-    </aside>
-
-    <!-- Main -->
-    <main id="main-content">
-
-        <header id="topbar">
-            <button id="menu-toggle">☰</button>
-            <h1>Health Log</h1>
-        </header>
-
-        <section id="page-content"></section>
-
-    </main>
-
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="signIn()" id="btn-signin" class="btn-signin">Sign in</button>
+      <button onclick="signOut()" id="btn-signout" class="btn-signout" style="display:none;">Sign out</button>
+      <div class="dot" id="dot"></div>
+    </div>
+  </div>
+  <div class="sync-msg" id="sync-msg"></div>
 </div>
 
-<script type="module" src="js/app.js"></script>
+<!-- PAGES -->
+<div class="page active" id="page-home">
+  <!-- Sub-tabs (Overview, Weekly, Runs, Projection) -->
+  <div class="chips" id="home-chips">
+    <button class="chip active" onclick="showSub('home','overview')">Dashboard</button>
+    <button class="chip" onclick="showSub('home','weekly')">Weekly</button>
+    <button class="chip" onclick="showSub('home','runs')">Runs</button>
+    <button class="chip" onclick="showSub('home','projection')">Projection</button>
+  </div>
 
+  <!-- DASHBOARD (Overview) -->
+  <div class="sub-page active" id="sub-home-overview">
+    <!-- Greeting -->
+    <div id="greeting" class="greeting"></div>
+
+    <!-- Score Ring & Quick Stats -->
+    <div class="score-section">
+      <div class="score-ring" id="score-ring"></div>
+      <div class="quick-stats" id="quick-stats"></div>
+    </div>
+
+    <!-- AI Coach -->
+    <div class="ai-card" id="ai-card"></div>
+
+    <!-- Progress Overview -->
+    <div class="section-title">Progress Overview</div>
+    <div class="progress-grid" id="progress-grid"></div>
+
+    <!-- 5K & Strength Volume -->
+    <div class="dual-cards">
+      <div class="card" id="fivek-card"></div>
+      <div class="card" id="volume-card"></div>
+    </div>
+
+    <!-- Level & XP -->
+    <div class="level-card" id="level-card"></div>
+
+    <!-- Nutrition Summary -->
+    <div class="section-title">Nutrition Summary</div>
+    <div class="nutrition-summary" id="nutrition-summary"></div>
+
+    <!-- Strength Overview -->
+    <div class="section-title">Strength Overview</div>
+    <div class="strength-overview" id="strength-overview"></div>
+
+    <!-- Recovery Details -->
+    <div class="section-title">Recovery</div>
+    <div class="recovery-details" id="recovery-details"></div>
+
+    <!-- AI Coach Insights -->
+    <div class="section-title">AI Coach Insights</div>
+    <div class="insights-list" id="insights-list"></div>
+
+    <!-- Upcoming Workout -->
+    <div class="section-title">Upcoming Workout</div>
+    <div class="upcoming-workout" id="upcoming-workout"></div>
+  </div>
+
+  <!-- Weekly, Runs, Projection sub-pages (unchanged) -->
+  <div class="sub-page" id="sub-home-weekly"></div>
+  <div class="sub-page" id="sub-home-runs"></div>
+  <div class="sub-page" id="sub-home-projection"></div>
+</div>
+
+<!-- NUTRITION -->
+<div class="page" id="page-nutrition">
+  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Nutrition History</div>
+  <div id="nutr-sub" style="font-size:12px;color:var(--dim);margin-bottom:14px"></div>
+  <div class="grid2" id="nutr-avgs" style="margin-bottom:14px"></div>
+  <div id="nutr-list"></div>
+</div>
+
+<!-- LIFT -->
+<div class="page" id="page-strength">
+  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Strength Tracker</div>
+  <div id="str-sub" style="font-size:12px;color:var(--dim);margin-bottom:14px"></div>
+  <div id="str-list"></div>
+</div>
+
+<!-- CHARTS -->
+<div class="page" id="page-charts">
+  <div class="chips" id="chart-chips">
+    <button class="chip active" onclick="setChart('weight')">Weight</button>
+    <button class="chip" onclick="setChart('rhr')">RHR</button>
+    <button class="chip" onclick="setChart('steps')">Steps</button>
+    <button class="chip" onclick="setChart('move')">Move</button>
+    <button class="chip" onclick="setChart('burn')">Burn</button>
+    <button class="chip" onclick="setChart('hrv')">HRV</button>
+  </div>
+  <div class="grid3" id="chart-stats" style="margin-bottom:12px"></div>
+  <div class="card" id="chart-container"></div>
+</div>
+
+<!-- LOG -->
+<div class="page" id="page-history">
+  <div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--white)">Full Log</div>
+  <div id="log-list"></div>
+</div>
+
+<!-- ADD -->
+<div class="page" id="page-add">
+  <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--white)">Add Daily Data</div>
+  <div style="font-size:12px;color:var(--dim);margin-bottom:14px">Paste your JSON – you can include Fitness, Strength, or both. Strength format: <b>Sets x Reps @ Weight</b>. Separate different groups with <b>;</b>. Example: <b>3x10@8kg;1x15@6kg</b>. Use <b>BW</b> for bodyweight.</div>
+  <div id="add-msg"></div>
+  <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:8px">Example JSON</div>
+  <div class="chips" id="example-chips">
+    <button class="chip active" onclick="showExample('fitness',this)">Fitness</button>
+    <button class="chip" onclick="showExample('strength',this)">Strength</button>
+    <button class="chip" onclick="showExample('both',this)">Both</button>
+  </div>
+  <div class="card" style="margin-top:12px;margin-bottom:16px">
+    <pre id="example-json" style="margin:0;white-space:pre-wrap;font-size:12px;color:var(--white)"></pre>
+  </div>
+  <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
+  <button class="btn btn-indigo" onclick="parseAndSave()">Parse and Save</button>
+  <button class="btn btn-ghost" onclick="document.getElementById('json-input').value='';showAddMsg(null)">Clear</button>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showTab('home',this)">
+    <div class="nav-bar"></div><span class="nav-label">Home</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('nutrition',this)">
+    <div class="nav-bar"></div><span class="nav-label">Nutrition</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('strength',this)">
+    <div class="nav-bar"></div><span class="nav-label">Lift</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('charts',this)">
+    <div class="nav-bar"></div><span class="nav-label">Charts</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('history',this)">
+    <div class="nav-bar"></div><span class="nav-label">Log</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('add',this)">
+    <div class="nav-bar"></div><span class="nav-label">Add</span>
+  </button>
+</nav>
+
+<script src="js/app.js"></script>
 </body>
 </html>
